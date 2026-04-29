@@ -669,62 +669,37 @@
     }
     .btn-settings:hover { background: rgba(255,255,255,.2); color: #fff; }
 
-    /* ── PENDING BADGE ── */
-    .pending-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--brand);
-      color: var(--dark);
-      border: none;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background .15s, transform .1s;
-      white-space: nowrap;
-    }
-    .pending-badge:hover { background: var(--brand-hover); transform: scale(1.03); }
-    .pending-badge .badge-dot {
-      background: var(--dark);
-      color: var(--brand);
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 800;
-    }
-
-    /* ── ALERTS SECTION ── */
-    .alerts-section {
-      background: #fff5f5;
-      border: 1.5px solid #fca5a5;
-      border-radius: var(--radius);
-      margin-bottom: 20px;
-      overflow: hidden;
-    }
-    .alerts-header {
+    /* ── BANNERS ── */
+    .banner-pending, .banner-critical {
+      width: 100%;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 18px;
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 10px;
       cursor: pointer;
-      user-select: none;
-      background: #fee2e2;
-    }
-    .alerts-header:hover { background: #fecaca; }
-    .alerts-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 700;
       font-size: 15px;
+      font-weight: 600;
+      transition: filter .15s;
+      user-select: none;
+    }
+    .banner-pending:hover, .banner-critical:hover { filter: brightness(.97); }
+    .banner-pending {
+      background: #FFFBEB;
+      border: 1.5px solid #FCD34D;
+      border-left: 4px solid #D97706;
+      color: #92400e;
+    }
+    .banner-critical {
+      background: #FFF5F5;
+      border: 1.5px solid #FCA5A5;
+      border-left: 4px solid #DC2626;
       color: #991b1b;
     }
+    .banner-cta { font-size: 13px; font-weight: 600; opacity: .75; }
+    .banner-chevron { font-size: 12px; transition: transform .2s; }
+    .banner-chevron.open { transform: rotate(180deg); }
     .alerts-count-pill {
       background: #dc2626;
       color: #fff;
@@ -733,13 +708,7 @@
       font-size: 12px;
       font-weight: 700;
     }
-    .alerts-chevron {
-      font-size: 12px;
-      color: #991b1b;
-      transition: transform .2s;
-    }
-    .alerts-chevron.open { transform: rotate(180deg); }
-    .alerts-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+    #alertsBody { display: flex; flex-direction: column; gap: 10px; }
     .alert-card {
       background: #fff;
       border: 1.5px solid #fca5a5;
@@ -860,9 +829,6 @@
   <header>
     <div class="logo"><span class="logo-icon">⛺</span><span class="brand-review">Review</span><span class="brand-hub">Hub</span></div>
     <div class="header-right">
-      <button id="pendingBadge" class="pending-badge" onclick="filterPending()" style="display:none">
-        ⚠️ <span class="badge-dot" id="pendingBadgeCount">0</span> pendientes
-      </button>
       <div class="conn-status">
         <span class="conn-dot" id="connDot"></span>
         <span id="connLabel">Conectando…</span>
@@ -897,18 +863,6 @@
         <div class="stat-label">Valoración media</div>
         <div class="stat-value" id="statAvg">–</div>
       </div>
-    </div>
-
-    <!-- Alerts section -->
-    <div class="alerts-section" id="alertsSection" style="display:none">
-      <div class="alerts-header" onclick="toggleAlerts()">
-        <div class="alerts-title">
-          🚨 Alertas críticas
-          <span class="alerts-count-pill" id="alertsCountPill">0</span>
-        </div>
-        <span class="alerts-chevron open" id="alertsChevron">▼</span>
-      </div>
-      <div class="alerts-body" id="alertsBody"></div>
     </div>
 
     <!-- Filters -->
@@ -948,6 +902,20 @@
       </div>
       <button class="btn-reset" onclick="resetFilters()">↺ Limpiar</button>
     </div>
+
+    <!-- Banners de estado -->
+    <div id="bannerPending" class="banner-pending" style="display:none" onclick="filterPending()">
+      <span>⚠️ Tienes <strong id="bannerPendingCount">0</strong> reseñas por contestar</span>
+      <span class="banner-cta">Ver reseñas pendientes →</span>
+    </div>
+    <div id="bannerCritical" class="banner-critical" style="display:none" onclick="toggleAlerts()">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span>🚨 <strong id="bannerCriticalCount">0</strong> reseñas con alertas críticas</span>
+        <span class="alerts-count-pill" id="alertsCountPill">0</span>
+      </div>
+      <span id="alertsChevron" class="banner-chevron open">▼</span>
+    </div>
+    <div id="alertsBody" style="display:none;margin-bottom:16px"></div>
 
     <!-- Reviews list -->
     <div class="reviews-header">
@@ -1193,14 +1161,16 @@
       const critical = allReviews.filter(r =>
         r.status !== 'responded' && r.status !== 'ignored' && getCriticalKeyword(r.comment)
       );
-      const section = document.getElementById('alertsSection');
+      const banner  = document.getElementById('bannerCritical');
       const pill    = document.getElementById('alertsCountPill');
+      const counter = document.getElementById('bannerCriticalCount');
       const body    = document.getElementById('alertsBody');
 
-      if (!critical.length) { section.style.display = 'none'; return; }
+      if (!critical.length) { banner.style.display = 'none'; body.style.display = 'none'; return; }
 
-      section.style.display = '';
+      banner.style.display = '';
       pill.textContent = critical.length;
+      counter.textContent = critical.length;
 
       body.innerHTML = critical.map(r => {
         const kw = getCriticalKeyword(r.comment);
@@ -1226,7 +1196,7 @@
       const body    = document.getElementById('alertsBody');
       const chevron = document.getElementById('alertsChevron');
       const open    = body.style.display !== 'none';
-      body.style.display    = open ? 'none' : '';
+      body.style.display = open ? 'none' : '';
       chevron.classList.toggle('open', !open);
     }
 
@@ -1262,10 +1232,9 @@
       document.getElementById('statResponded').textContent = responded;
       document.getElementById('statAvg').textContent = avg ? `${avg} ★` : '–';
 
-      // Pending badge en cabecera
-      const badge = document.getElementById('pendingBadge');
-      document.getElementById('pendingBadgeCount').textContent = pending;
-      badge.style.display = pending > 0 ? '' : 'none';
+      const bannerP = document.getElementById('bannerPending');
+      document.getElementById('bannerPendingCount').textContent = pending;
+      bannerP.style.display = pending > 0 ? '' : 'none';
 
       updateAlerts();
     }
