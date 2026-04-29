@@ -796,6 +796,27 @@
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // PATCH directo via fetch (evita bug del cliente JS con sb_publishable_ keys)
+    async function patchReview(id, fields) {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/reviews?id=eq.${id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify(fields),
+        }
+      );
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.status);
+        throw new Error(`HTTP ${res.status}: ${text}`);
+      }
+    }
+
     // ═══════════════════════════════════════════════════════════
     //  ESTADO
     // ═══════════════════════════════════════════════════════════
@@ -1049,12 +1070,11 @@
         approved_at:      new Date().toISOString(),
       });
 
-      const { error } = await db
-        .from('reviews')
-        .update({ status: 'approved', reviewed_at: new Date().toISOString() })
-        .eq('id', id);
-
-      if (error) { showToast('Error al guardar: ' + error.message, 'error'); return; }
+      try {
+        await patchReview(id, { status: 'approved', reviewed_at: new Date().toISOString() });
+      } catch (e) {
+        showToast('Error al guardar: ' + e.message, 'error'); return;
+      }
       showToast('Respuesta aprobada y enviada a n8n ✅', 'success');
       await loadReviews();
     }
@@ -1062,12 +1082,11 @@
     async function ignoreReview(id) {
       disableCardButtons(id);
 
-      const { error } = await db
-        .from('reviews')
-        .update({ status: 'ignored' })
-        .eq('id', id);
-
-      if (error) { showToast('Error al guardar: ' + error.message, 'error'); return; }
+      try {
+        await patchReview(id, { status: 'ignored' });
+      } catch (e) {
+        showToast('Error al guardar: ' + e.message, 'error'); return;
+      }
       showToast('Reseña marcada como ignorada', 'success');
       await loadReviews();
     }
@@ -1122,26 +1141,15 @@
         approved_at:      new Date().toISOString(),
       });
 
-      let sbData, sbError;
       try {
-        const result = await db
-          .from('reviews')
-          .update({
-            final_response: text,
-            status:         'responded',
-            reviewed_at:    new Date().toISOString(),
-          })
-          .eq('id', currentReviewId);
-        sbData = result.data;
-        sbError = result.error;
-        console.log('[ReviewHub] Supabase update result:', result);
+        await patchReview(currentReviewId, {
+          final_response: text,
+          status:         'responded',
+          reviewed_at:    new Date().toISOString(),
+        });
       } catch (e) {
-        console.error('[ReviewHub] Supabase update threw exception:', e);
-        showToast('Error al guardar (excepción): ' + e.message, 'error');
-        return;
+        showToast('Error al guardar: ' + e.message, 'error'); return;
       }
-
-      if (sbError) { showToast('Error Supabase: ' + sbError.message + ' | code: ' + sbError.code, 'error'); return; }
       showToast('Respuesta enviada a Google ✅', 'success');
       closeModal();
       await loadReviews();
