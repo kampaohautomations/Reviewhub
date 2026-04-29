@@ -493,6 +493,18 @@
       border-color: #64748b;
     }
 
+    .btn-contact {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #6ee7b7;
+    }
+
+    .btn-contact:hover:not(:disabled) {
+      background: #059669;
+      color: #fff;
+      border-color: #059669;
+    }
+
     /* ── EMPTY / LOADING ── */
     .empty-state {
       text-align: center;
@@ -1315,6 +1327,9 @@
           ${r.ai_response
               ? `<button class="btn btn-approve" onclick="approveAI('${r.id}')">✅ Aprobar respuesta IA</button>`
               : ''}
+          ${r.rating <= 2
+              ? `<button class="btn btn-contact" onclick="openModalWithContact('${r.id}', '${esc(r.reviewer_name)}')">📧 Invitar a contactar</button>`
+              : ''}
           <button class="btn btn-respond" onclick="openModal('${r.id}', '${esc(r.reviewer_name)}')">✏️ Respuesta propia</button>
           <button class="btn btn-ignore"  onclick="ignoreReview('${r.id}')">🚫 Ignorar</button>
         </div>` : ''}
@@ -1402,6 +1417,19 @@
       currentReviewId = id;
       document.getElementById('modalSubtitle').textContent = `Respondiendo a: ${authorName}`;
       document.getElementById('modalTextarea').value = '';
+      updateCharCount();
+      document.getElementById('modalOverlay').classList.add('open');
+      setTimeout(() => document.getElementById('modalTextarea').focus(), 50);
+    }
+
+    function openModalWithContact(id, authorName) {
+      const review = allReviews.find(r => r.id === id);
+      if (!review) return;
+      currentReviewId = id;
+      document.getElementById('modalSubtitle').textContent = `Respondiendo a: ${authorName}`;
+      const base = review.ai_response ? review.ai_response.trim() : '';
+      const contactLine = 'Si lo desea, puede reportar la incidencia directamente a nuestro equipo en hola@kampaoh.com y le atenderemos lo antes posible.';
+      document.getElementById('modalTextarea').value = base ? `${base}\n\n${contactLine}` : contactLine;
       updateCharCount();
       document.getElementById('modalOverlay').classList.add('open');
       setTimeout(() => document.getElementById('modalTextarea').focus(), 50);
