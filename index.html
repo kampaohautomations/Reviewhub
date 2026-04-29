@@ -629,6 +629,119 @@
       background: var(--brand-hover);
     }
 
+    /* ── PENDING BADGE ── */
+    .pending-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--brand);
+      color: var(--dark);
+      border: none;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .pending-badge:hover { background: var(--brand-hover); transform: scale(1.03); }
+    .pending-badge .badge-dot {
+      background: var(--dark);
+      color: var(--brand);
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* ── ALERTS SECTION ── */
+    .alerts-section {
+      background: #fff5f5;
+      border: 1.5px solid #fca5a5;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .alerts-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      cursor: pointer;
+      user-select: none;
+      background: #fee2e2;
+    }
+    .alerts-header:hover { background: #fecaca; }
+    .alerts-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #991b1b;
+    }
+    .alerts-count-pill {
+      background: #dc2626;
+      color: #fff;
+      border-radius: 20px;
+      padding: 2px 9px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .alerts-chevron {
+      font-size: 12px;
+      color: #991b1b;
+      transition: transform .2s;
+    }
+    .alerts-chevron.open { transform: rotate(180deg); }
+    .alerts-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .alert-card {
+      background: #fff;
+      border: 1.5px solid #fca5a5;
+      border-left: 4px solid #dc2626;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .alert-card-info { flex: 1; min-width: 0; }
+    .alert-card-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+    .alert-author { font-weight: 700; font-size: 14px; }
+    .alert-camping { font-size: 12px; color: var(--text-muted); }
+    .alert-excerpt { font-size: 13px; color: #374151; line-height: 1.45; }
+    .alert-keyword {
+      background: #fee2e2;
+      color: #991b1b;
+      font-weight: 700;
+      padding: 0 3px;
+      border-radius: 3px;
+    }
+    .alert-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .btn-alert-view {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-alert-view:hover { background: #b91c1c; }
+
     /* ── TOAST ── */
     .toast-container {
       position: fixed;
@@ -679,6 +792,9 @@
   <header>
     <div class="logo"><span class="logo-icon">⛺</span><span class="brand-review">Review</span><span class="brand-hub">Hub</span></div>
     <div class="header-right">
+      <button id="pendingBadge" class="pending-badge" onclick="filterPending()" style="display:none">
+        ⚠️ <span class="badge-dot" id="pendingBadgeCount">0</span> pendientes
+      </button>
       <div class="conn-status">
         <span class="conn-dot" id="connDot"></span>
         <span id="connLabel">Conectando…</span>
@@ -712,6 +828,18 @@
         <div class="stat-label">Valoración media</div>
         <div class="stat-value" id="statAvg">–</div>
       </div>
+    </div>
+
+    <!-- Alerts section -->
+    <div class="alerts-section" id="alertsSection" style="display:none">
+      <div class="alerts-header" onclick="toggleAlerts()">
+        <div class="alerts-title">
+          🚨 Alertas críticas
+          <span class="alerts-count-pill" id="alertsCountPill">0</span>
+        </div>
+        <span class="alerts-chevron open" id="alertsChevron">▼</span>
+      </div>
+      <div class="alerts-body" id="alertsBody"></div>
     </div>
 
     <!-- Filters -->
@@ -786,6 +914,23 @@
     // ═══════════════════════════════════════════════════════════
     //  CONFIGURACIÓN  — edita estas constantes según tus datos
     // ═══════════════════════════════════════════════════════════
+    const CRITICAL_KEYWORDS = [
+      // Plagas e insectos
+      'chinche','chinches','garrapata','garrapatas','pulga','pulgas',
+      'cucaracha','cucarachas','rata','ratas','ratón','raton','ratones',
+      'plaga','plagas','parásito','parasito','piojo','piojos',
+      // Legal / autoridades
+      'policía','policia','guardia civil','denuncia','denunciar','demanda',
+      'abogado','juzgado','tribunal','ilegal','multa','inspección','inspeccion',
+      // Salud y emergencias
+      'hospital','urgencias','ambulancia','accidente','herida','herido','sangre',
+      'intoxicación','intoxicacion','envenenamiento','alergia grave','picadura',
+      // Delitos
+      'robo','robaron','ladrón','ladron','hurto','estafa','fraude','engaño','engano',
+      // Peligros graves
+      'incendio','peligro','peligroso','muerte','muerto','explosión','explosion',
+    ];
+
     const SUPABASE_URL = 'https://iuqthtjxpuwxsaeyracc.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_jbw4Nm4UAfyD9G_U9xiocg_pi41Xilc';
     const N8N_WEBHOOK = 'https://kampaoh.app.n8n.cloud/webhook/3b36bb12-5c1a-4a67-ab86-6a28aa16ebbc';
@@ -925,6 +1070,76 @@
     // ═══════════════════════════════════════════════════════════
     //  ESTADÍSTICAS
     // ═══════════════════════════════════════════════════════════
+    function getCriticalKeyword(text) {
+      if (!text) return null;
+      const lower = text.toLowerCase();
+      return CRITICAL_KEYWORDS.find(kw => lower.includes(kw)) || null;
+    }
+
+    function highlightKeyword(text, keyword) {
+      if (!keyword) return esc(text);
+      const re = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return esc(text).replace(re, '<mark class="alert-keyword">$1</mark>');
+    }
+
+    function updateAlerts() {
+      const critical = allReviews.filter(r =>
+        r.status !== 'responded' && r.status !== 'ignored' && getCriticalKeyword(r.comment)
+      );
+      const section = document.getElementById('alertsSection');
+      const pill    = document.getElementById('alertsCountPill');
+      const body    = document.getElementById('alertsBody');
+
+      if (!critical.length) { section.style.display = 'none'; return; }
+
+      section.style.display = '';
+      pill.textContent = critical.length;
+
+      body.innerHTML = critical.map(r => {
+        const kw = getCriticalKeyword(r.comment);
+        const excerpt = r.comment ? r.comment.slice(0, 160) + (r.comment.length > 160 ? '…' : '') : '';
+        return `<div class="alert-card">
+          <div class="alert-card-info">
+            <div class="alert-card-top">
+              <span class="alert-author">${esc(r.reviewer_name)}</span>
+              <span class="alert-camping">⛺ ${esc(r.location_name)}</span>
+              <span style="font-size:12px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+              ${statusBadge(r.status)}
+            </div>
+            <div class="alert-excerpt">${highlightKeyword(excerpt, kw)}</div>
+          </div>
+          <div class="alert-actions">
+            <button class="btn-alert-view" onclick="scrollToReview('${r.id}')">Ver reseña ↓</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function toggleAlerts() {
+      const body    = document.getElementById('alertsBody');
+      const chevron = document.getElementById('alertsChevron');
+      const open    = body.style.display !== 'none';
+      body.style.display    = open ? 'none' : '';
+      chevron.classList.toggle('open', !open);
+    }
+
+    function scrollToReview(id) {
+      resetFilters();
+      setTimeout(() => {
+        const el = document.getElementById(`card-${id}`);
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.outline = '2px solid #dc2626'; setTimeout(() => el.style.outline = '', 2000); }
+      }, 100);
+    }
+
+    function filterPending() {
+      document.getElementById('filterStatus').value = 'auto';
+      document.getElementById('filterRating').value = 'negative';
+      document.getElementById('filterCamping').value = '';
+      document.getElementById('filterSearch').value = '';
+      applyFilters();
+      window.scrollTo({ top: document.getElementById('reviewsList').offsetTop - 80, behavior: 'smooth' });
+    }
+
     function updateStats() {
       const total = allReviews.length;
       const pending = allReviews.filter(r => r.status === 'pending' || r.status === 'auto').length;
@@ -939,6 +1154,13 @@
       document.getElementById('statNeg').textContent = negative;
       document.getElementById('statResponded').textContent = responded;
       document.getElementById('statAvg').textContent = avg ? `${avg} ★` : '–';
+
+      // Pending badge en cabecera
+      const badge = document.getElementById('pendingBadge');
+      document.getElementById('pendingBadgeCount').textContent = pending;
+      badge.style.display = pending > 0 ? '' : 'none';
+
+      updateAlerts();
     }
 
     // ═══════════════════════════════════════════════════════════
