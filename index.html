@@ -322,6 +322,30 @@
       border: 1px solid var(--border);
     }
 
+    .badge-managed {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #fef9c3;
+      color: #854d0e;
+      border: 1px solid #fde047;
+      margin-left: 6px;
+    }
+
+    .badge-external {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      margin-left: 6px;
+    }
+
     .card-right {
       display: flex;
       flex-direction: column;
@@ -964,21 +988,43 @@
     //  CONFIGURACIÓN  — edita estas constantes según tus datos
     // ═══════════════════════════════════════════════════════════
     const CRITICAL_KEYWORDS = [
-      // Plagas e insectos
+      // Insectos de infestación sanitaria grave (dentro del alojamiento)
       'chinche','chinches','garrapata','garrapatas','pulga','pulgas',
       'cucaracha','cucarachas','rata','ratas','ratón','raton','ratones',
-      'plaga','plagas','parásito','parasito','piojo','piojos',
+      'piojo','piojos',
       // Legal / autoridades
       'policía','policia','guardia civil','denuncia','denunciar','demanda',
-      'abogado','juzgado','tribunal','ilegal','multa','inspección','inspeccion',
-      // Salud y emergencias
-      'hospital','urgencias','ambulancia','accidente','herida','herido','sangre',
-      'intoxicación','intoxicacion','envenenamiento','alergia grave','picadura',
+      'abogado','juzgado','tribunal','ilegal','multa',
+      // Salud y emergencias médicas
+      'hospital','urgencias','ambulancia','accidente','sangre',
+      'intoxicación','intoxicacion','envenenamiento','alergia grave',
+      'intoxicacion alimentaria',
       // Delitos
-      'robo','robaron','ladrón','ladron','hurto','estafa','fraude','engaño','engano',
-      // Peligros graves
-      'incendio','peligro','peligroso','muerte','muerto','explosión','explosion',
+      'robo','robaron','ladrón','ladron','hurto','estafa','fraude',
+      // Peligros físicos graves
+      'incendio','muerte','muerto','explosión','explosion','cortocircuito',
     ];
+
+    // Campings gestionados directamente por Kampaoh
+    const MANAGED_CAMPINGS = ['palmar','las arenas','trafalgar','córdoba','cordoba','pedroso','ría de vigo','ria de vigo'];
+
+    // Keywords que indican instalaciones del camping (no de Kampaoh)
+    const EXTERNAL_FACILITY_KEYWORDS = [
+      'piscina','ducha','duchas','baño','baños','aseo','aseos','servicio','servicios',
+      'restaurante','bar','cocina común','cocina comun','instalaciones',
+    ];
+
+    function isManagedCamping(locationName) {
+      if (!locationName) return false;
+      const lower = locationName.toLowerCase();
+      return MANAGED_CAMPINGS.some(name => lower.includes(name));
+    }
+
+    function hasExternalFacilityMention(text) {
+      if (!text) return false;
+      const lower = text.toLowerCase();
+      return EXTERNAL_FACILITY_KEYWORDS.some(kw => lower.includes(kw));
+    }
 
     // ═══════════════════════════════════════════════════════════
     //  CREDENCIALES (localStorage — nunca en el código fuente)
@@ -1294,12 +1340,15 @@
         const needsAction = r.rating <= 3 && (r.status === 'pending' || r.status === 'auto');
         const replied = r.status === 'responded' || r.status === 'approved';
         const replyText = r.final_response || r.ai_response;
+        const managed = isManagedCamping(r.location_name);
 
         return `<div class="review-card ${tone}" id="card-${r.id}">
       <div class="card-top">
         <div>
           <div class="author-name">${esc(r.reviewer_name)}</div>
-          <span class="camping-badge">⛺ ${esc(r.location_name)}</span>
+          <span class="camping-badge">⛺ ${esc(r.location_name)}</span>${managed
+            ? '<span class="badge-managed">Gestión directa</span>'
+            : '<span class="badge-external">Camping externo</span>'}
         </div>
         <div class="card-right">
           <div class="stars">${renderStars(r.rating)}</div>
@@ -1429,7 +1478,13 @@
       document.getElementById('modalSubtitle').textContent = `Respondiendo a: ${authorName}`;
       const base = review.ai_response ? review.ai_response.trim() : '';
       const contactLine = 'Si lo desea, puede reportar la incidencia directamente a nuestro equipo en hola@kampaoh.com y le atenderemos lo antes posible.';
-      document.getElementById('modalTextarea').value = base ? `${base}\n\n${contactLine}` : contactLine;
+      let externalNote = '';
+      if (!isManagedCamping(review.location_name) && hasExternalFacilityMention(review.comment)) {
+        externalNote = '\n\nEn cuanto a las instalaciones del camping (piscina, duchas, áreas comunes), queremos que sepas que son gestionadas directamente por el establecimiento. Sin embargo, siempre trasladamos vuestros comentarios para contribuir a mejorar la experiencia conjunta.';
+      }
+      document.getElementById('modalTextarea').value = base
+        ? `${base}${externalNote}\n\n${contactLine}`
+        : `${externalNote ? externalNote.trim() + '\n\n' : ''}${contactLine}`;
       updateCharCount();
       document.getElementById('modalOverlay').classList.add('open');
       setTimeout(() => document.getElementById('modalTextarea').focus(), 50);
