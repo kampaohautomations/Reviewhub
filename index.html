@@ -529,6 +529,58 @@
       border-color: #059669;
     }
 
+    .critical-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .critical-toggle-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    .btn-mark-critical {
+      background: #fff5f5;
+      color: #dc2626;
+      border: 1px solid #fca5a5;
+      padding: 4px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .btn-mark-critical:hover, .btn-mark-critical.active {
+      background: #dc2626;
+      color: #fff;
+      border-color: #dc2626;
+    }
+
+    .btn-mark-not-critical {
+      background: #f8fafc;
+      color: #64748b;
+      border: 1px solid #cbd5e1;
+      padding: 4px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .btn-mark-not-critical:hover, .btn-mark-not-critical.active {
+      background: #64748b;
+      color: #fff;
+      border-color: #64748b;
+    }
+
     /* ── EMPTY / LOADING ── */
     .empty-state {
       text-align: center;
@@ -1217,7 +1269,8 @@
 
     function updateAlerts() {
       const critical = allReviews.filter(r =>
-        r.status !== 'responded' && r.status !== 'ignored' && getCriticalKeyword(r.comment)
+        r.status !== 'responded' && r.status !== 'ignored' &&
+        (getCriticalKeyword(r.comment) || r.severity === 'critical')
       );
       const banner  = document.getElementById('bannerCritical');
       const pill    = document.getElementById('alertsCountPill');
@@ -1357,6 +1410,15 @@
         </div>
       </div>
 
+      ${r.rating <= 2 ? `
+      <div class="critical-toggle">
+        <span class="critical-toggle-label">¿Crítica?</span>
+        <button class="btn-mark-critical${r.severity === 'critical' ? ' active' : ''}"
+                onclick="setCritical('${r.id}', true)">🚨 Sí, es crítica</button>
+        <button class="btn-mark-not-critical${r.severity === 'critical' ? '' : ' active'}"
+                onclick="setCritical('${r.id}', false)">✅ No es crítica</button>
+      </div>` : ''}
+
       ${r.comment ? `<div class="review-text">${esc(r.comment)}</div>` : ''}
 
       ${r.ai_response && r.status === 'auto' ? `
@@ -1453,6 +1515,19 @@
       await loadReviews();
     }
 
+    async function setCritical(id, isCritical) {
+      try {
+        await patchReview(id, { severity: isCritical ? 'critical' : null });
+        const review = allReviews.find(r => r.id === id);
+        if (review) review.severity = isCritical ? 'critical' : null;
+        updateAlerts();
+        applyFilters();
+        showToast(isCritical ? '🚨 Marcada como crítica' : '✅ Marcada como no crítica', 'success');
+      } catch(e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+    }
+
     function disableCardButtons(id) {
       const card = document.getElementById(`card-${id}`);
       if (!card) return;
@@ -1477,7 +1552,7 @@
       currentReviewId = id;
       document.getElementById('modalSubtitle').textContent = `Respondiendo a: ${authorName}`;
       const base = review.ai_response ? review.ai_response.trim() : '';
-      const contactLine = 'Si lo desea, puede reportar la incidencia directamente a nuestro equipo en hola@kampaoh.com y le atenderemos lo antes posible.';
+      const contactLine = 'Si lo desea, puede reportar la incidencia directamente a nuestro equipo y le atenderemos en las próximas 72h.';
       let externalNote = '';
       if (!isManagedCamping(review.location_name) && hasExternalFacilityMention(review.comment)) {
         externalNote = '\n\nEn cuanto a las instalaciones del camping (piscina, duchas, áreas comunes), queremos que sepas que son gestionadas directamente por el establecimiento. Sin embargo, siempre trasladamos vuestros comentarios para contribuir a mejorar la experiencia conjunta.';
