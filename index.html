@@ -1240,7 +1240,7 @@
         if (camping && r.location_name !== camping) return false;
         if (rating === 'negative' && r.rating > 2) return false;
         if (rating && rating !== 'negative' && r.rating !== parseInt(rating)) return false;
-        if (status === 'actionable' && r.status !== 'pending' && r.status !== 'auto') return false;
+        if (status === 'actionable' && !(r.rating <= 2 && (r.status === 'pending' || r.status === 'auto'))) return false;
         if (status && status !== 'actionable' && r.status !== status) return false;
         if (search) {
           const haystack = `${r.reviewer_name} ${r.comment || ''} ${r.location_name}`.toLowerCase();
@@ -1332,7 +1332,7 @@
 
     function updateStats() {
       const total = allReviews.length;
-      const pending = allReviews.filter(r => r.status === 'pending' || r.status === 'auto').length;
+      const pending = allReviews.filter(r => r.rating <= 2 && (r.status === 'pending' || r.status === 'auto')).length;
       const negative = allReviews.filter(r => r.rating <= 2).length;
       const responded = allReviews.filter(r => r.status === 'responded' || r.status === 'approved').length;
       const avg = total
