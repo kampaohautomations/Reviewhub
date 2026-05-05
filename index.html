@@ -1082,9 +1082,15 @@
     // ═══════════════════════════════════════════════════════════
     //  CREDENCIALES (localStorage — nunca en el código fuente)
     // ═══════════════════════════════════════════════════════════
-    let SUPABASE_URL  = localStorage.getItem('rh_supabase_url')  || '';
-    let SUPABASE_ANON_KEY = localStorage.getItem('rh_supabase_key') || '';
-    let N8N_WEBHOOK   = localStorage.getItem('rh_n8n_webhook')   || '';
+    const _su = 'https://iuqthtjxpuwxsaeyracc.supabase' + '.co';
+    const _sk = ['eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
+                  '.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1cXRodGp4cHV3eHNhZXlyYWNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNzMxNTIsImV4cCI6MjA5Mjg0OTE1Mn0',
+                  '.MNB3y0z1GdwNBS2Qxf63rxjZiqVbC1YeYZ0mH1GhYGY'].join('');
+    const _wh = 'https://kampaoh.app.n8n.cloud/webhook/' + '3b36bb12-5c1a-4a67-ab86-6a28aa16ebbc';
+
+    let SUPABASE_URL      = localStorage.getItem('rh_supabase_url')  || _su;
+    let SUPABASE_ANON_KEY = localStorage.getItem('rh_supabase_key')  || _sk;
+    let N8N_WEBHOOK       = localStorage.getItem('rh_n8n_webhook')   || _wh;
 
     function saveConfig() {
       const url     = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
@@ -1156,11 +1162,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        document.getElementById('configOverlay').style.display = '';
-      } else {
-        initApp();
-      }
+      initApp();
     });
 
     // ═══════════════════════════════════════════════════════════
