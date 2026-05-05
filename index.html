@@ -1273,6 +1273,7 @@
 
     function updateAlerts() {
       const critical = allReviews.filter(r =>
+        r.rating <= 2 &&
         r.status !== 'responded' && r.status !== 'ignored' &&
         (getCriticalKeyword(r.comment) || r.severity === 'critical')
       );
