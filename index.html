@@ -1409,6 +1409,7 @@
     //  ESTADO
     // ═══════════════════════════════════════════════════════════
     let allReviews = [];
+    let liveReviews = [];
     let currentReviewId = null;
 
     // ═══════════════════════════════════════════════════════════
@@ -1462,7 +1463,8 @@
         return;
       }
 
-      allReviews = data || [];
+      allReviews  = data || [];
+      liveReviews = allReviews.filter(r => r.source !== 'historical');
       populateCampingFilter();
       updateStats();
       applyFilters();
@@ -1472,7 +1474,7 @@
     //  FILTROS
     // ═══════════════════════════════════════════════════════════
     function populateCampingFilter() {
-      const campings = [...new Set(allReviews.map(r => r.location_name).filter(Boolean))].sort();
+      const campings = [...new Set(liveReviews.map(r => r.location_name).filter(Boolean))].sort();
       const sel = document.getElementById('filterCamping');
       const prev = sel.value;
       sel.innerHTML = '<option value="">Todos</option>' +
@@ -1498,7 +1500,7 @@
       const status = document.getElementById('filterStatus').value;
       const search = document.getElementById('filterSearch').value.toLowerCase().trim();
 
-      const filtered = allReviews.filter(r => {
+      const filtered = liveReviews.filter(r => {
         if (camping && r.location_name !== camping) return false;
         if (rating === 'negative' && r.rating > 2) return false;
         if (rating && rating !== 'negative' && r.rating !== parseInt(rating)) return false;
@@ -1532,7 +1534,7 @@
     }
 
     function updateAlerts() {
-      const critical = allReviews.filter(r =>
+      const critical = liveReviews.filter(r =>
         r.rating <= 2 &&
         r.status !== 'responded' && r.status !== 'ignored' &&
         (getCriticalKeyword(r.comment) || r.severity === 'critical')
@@ -1594,12 +1596,12 @@
     }
 
     function updateStats() {
-      const total = allReviews.length;
-      const pending = allReviews.filter(r => r.rating <= 2 && (r.status === 'pending' || r.status === 'auto')).length;
-      const negative = allReviews.filter(r => r.rating <= 2).length;
-      const responded = allReviews.filter(r => r.status === 'responded' || r.status === 'approved').length;
+      const total = liveReviews.length;
+      const pending = liveReviews.filter(r => r.rating <= 2 && (r.status === 'pending' || r.status === 'auto')).length;
+      const negative = liveReviews.filter(r => r.rating <= 2).length;
+      const responded = liveReviews.filter(r => r.status === 'responded' || r.status === 'approved').length;
       const avg = total
-        ? (allReviews.reduce((s, r) => s + (r.rating || 0), 0) / total).toFixed(1)
+        ? (liveReviews.reduce((s, r) => s + (r.rating || 0), 0) / total).toFixed(1)
         : null;
 
       document.getElementById('statTotal').textContent = total;
