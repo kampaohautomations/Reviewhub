@@ -1960,8 +1960,9 @@
       const { data, error } = await db
         .from('reviews')
         .select('*')
-        .gte('created_at', from + 'T00:00:00')
-        .lte('created_at', to   + 'T23:59:59');
+        .gte('review_date', from + 'T00:00:00')
+        .lte('review_date', to   + 'T23:59:59')
+        .not('review_date', 'is', null);
       if (error) throw error;
       return data || [];
     }
