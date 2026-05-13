@@ -1454,6 +1454,7 @@
       const { data, error } = await db
         .from('reviews')
         .select('*')
+        .order('review_date', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) {
