@@ -1458,6 +1458,7 @@
       const { data, error } = await db
         .from('reviews')
         .select('*')
+        .or('review_date.gte.2026-01-01T00:00:00,and(review_date.is.null,created_at.gte.2026-01-01T00:00:00)')
         .order('review_date', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
@@ -1469,10 +1470,7 @@
       }
 
       allReviews  = data || [];
-      liveReviews = allReviews.filter(r => {
-        const d = r.review_date || r.created_at;
-        return d && d >= '2026-01-01';
-      });
+      liveReviews = allReviews;
       populateCampingFilter();
       updateStats();
       applyFilters();
