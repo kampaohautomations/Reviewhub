@@ -1214,6 +1214,9 @@
     <!-- Reviews list -->
     <div class="reviews-header">
       <span class="reviews-count" id="reviewsCount"></span>
+      <button id="sortBtn" onclick="toggleSort()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 12px;cursor:pointer;font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:5px">
+        <span id="sortIcon">↓</span> <span id="sortLabel">Más recientes</span>
+      </button>
     </div>
     <div id="reviewsList">
       <div class="loading">
@@ -1410,6 +1413,7 @@
     // ═══════════════════════════════════════════════════════════
     let allReviews = [];
     let liveReviews = [];
+    let sortAscending = false;
     let currentReviewId = null;
 
     // ═══════════════════════════════════════════════════════════
@@ -1495,6 +1499,13 @@
       applyFilters();
     }
 
+    function toggleSort() {
+      sortAscending = !sortAscending;
+      document.getElementById('sortIcon').textContent = sortAscending ? '↑' : '↓';
+      document.getElementById('sortLabel').textContent = sortAscending ? 'Más antiguas' : 'Más recientes';
+      applyFilters();
+    }
+
     function applyFilters() {
       const camping = document.getElementById('filterCamping').value;
       const rating = document.getElementById('filterRating').value;
@@ -1512,6 +1523,12 @@
           if (!haystack.includes(search)) return false;
         }
         return true;
+      });
+
+      filtered.sort((a, b) => {
+        const da = new Date(a.review_date || a.created_at);
+        const db2 = new Date(b.review_date || b.created_at);
+        return sortAscending ? da - db2 : db2 - da;
       });
 
       document.getElementById('reviewsCount').textContent =
