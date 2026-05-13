@@ -1469,7 +1469,10 @@
       }
 
       allReviews  = data || [];
-      liveReviews = allReviews.filter(r => r.source !== 'historical');
+      liveReviews = allReviews.filter(r => {
+        const d = r.review_date || r.created_at;
+        return d && d >= '2026-01-01';
+      });
       populateCampingFilter();
       updateStats();
       applyFilters();
