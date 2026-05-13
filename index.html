@@ -1556,6 +1556,7 @@
       const critical = liveReviews.filter(r =>
         r.rating <= 2 &&
         r.status !== 'responded' && r.status !== 'ignored' &&
+        r.severity !== 'ok' &&
         (getCriticalKeyword(r.comment) || r.severity === 'critical')
       );
       const banner  = document.getElementById('bannerCritical');
@@ -1701,7 +1702,7 @@
         <span class="critical-toggle-label">¿Crítica?</span>
         <button class="btn-mark-critical${r.severity === 'critical' ? ' active' : ''}"
                 onclick="setCritical('${r.id}', true)">🚨 Sí, es crítica</button>
-        <button class="btn-mark-not-critical${r.severity === 'critical' ? '' : ' active'}"
+        <button class="btn-mark-not-critical${r.severity === 'ok' ? ' active' : ''}"
                 onclick="setCritical('${r.id}', false)">✅ No es crítica</button>
       </div>` : ''}
 
@@ -1803,9 +1804,9 @@
 
     async function setCritical(id, isCritical) {
       try {
-        await patchReview(id, { severity: isCritical ? 'critical' : null });
+        await patchReview(id, { severity: isCritical ? 'critical' : 'ok' });
         const review = allReviews.find(r => r.id === id);
-        if (review) review.severity = isCritical ? 'critical' : null;
+        if (review) review.severity = isCritical ? 'critical' : 'ok';
         updateAlerts();
         applyFilters();
         showToast(isCritical ? '🚨 Marcada como crítica' : '✅ Marcada como no crítica', 'success');
