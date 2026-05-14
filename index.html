@@ -1432,9 +1432,9 @@
       if (btn) { btn.disabled = true; btn.textContent = 'Traduciendo…'; }
       try {
         const clean = extractCleanComment(review.comment);
-        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean.slice(0, 800))}&langpair=|es`);
+        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=es&dt=t&q=${encodeURIComponent(clean)}`);
         const data = await res.json();
-        const translated = data.responseData.translatedText;
+        const translated = data[0].map(x => x[0]).join('');
         translationCache.set(id, translated);
         if (span) span.textContent = translated;
         if (btn) btn.style.display = 'none';
