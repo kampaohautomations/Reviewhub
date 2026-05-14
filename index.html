@@ -1586,7 +1586,7 @@
     function isLongNegativeReview(r) {
       if (r.rating > 2 || !r.comment) return false;
       const sentences = r.comment.split(/[.!?]+/).filter(s => s.trim().length > 10);
-      return sentences.length > 4;
+      return sentences.length > 5;
     }
 
     function highlightKeyword(text, keyword) {
