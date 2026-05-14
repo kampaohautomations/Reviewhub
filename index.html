@@ -1313,23 +1313,22 @@
     // ═══════════════════════════════════════════════════════════
     //  CONFIGURACIÓN  — edita estas constantes según tus datos
     // ═══════════════════════════════════════════════════════════
-    const CRITICAL_KEYWORDS = [
-      // Insectos de infestación sanitaria grave (dentro del alojamiento)
-      'chinche','chinches','garrapata','garrapatas','pulga','pulgas',
-      'cucaracha','cucarachas','rata','ratas','ratón','raton','ratones',
-      'piojo','piojos',
-      // Legal / autoridades
-      'policía','policia','guardia civil','denuncia','denunciar','demanda',
-      'abogado','juzgado','tribunal','ilegal','multa',
-      // Salud y emergencias médicas
-      'hospital','urgencias','ambulancia','accidente','sangre',
-      'intoxicación','intoxicacion','envenenamiento','alergia grave',
-      'intoxicacion alimentaria',
-      // Delitos
-      'robo','robaron','ladrón','ladron','hurto','estafa','fraude',
-      // Peligros físicos graves
-      'incendio','muerte','muerto','explosión','explosion','cortocircuito',
+    const CRITICAL_KEYWORD_CATEGORIES = [
+      { label: '🪲 Plagas',    keywords: ['chinche','chinches','garrapata','garrapatas','pulga','pulgas','cucaracha','cucarachas','rata','ratas','ratón','raton','ratones','piojo','piojos'] },
+      { label: '⚖️ Legal',     keywords: ['policía','policia','guardia civil','denuncia','denunciar','demanda','abogado','juzgado','tribunal','ilegal','multa'] },
+      { label: '🏥 Salud',     keywords: ['hospital','urgencias','ambulancia','accidente','sangre','intoxicación','intoxicacion','envenenamiento','alergia grave','intoxicacion alimentaria'] },
+      { label: '🔓 Robo',      keywords: ['robo','robaron','ladrón','ladron','hurto','estafa','fraude'] },
+      { label: '🔥 Peligro',   keywords: ['incendio','muerte','muerto','explosión','explosion','cortocircuito','electricidad'] },
     ];
+    const CRITICAL_KEYWORDS = CRITICAL_KEYWORD_CATEGORIES.flatMap(c => c.keywords);
+
+    function getCriticalCategories(text) {
+      if (!text) return [];
+      const lower = text.toLowerCase();
+      return CRITICAL_KEYWORD_CATEGORIES
+        .filter(cat => cat.keywords.some(kw => lower.includes(kw)))
+        .map(cat => cat.label);
+    }
 
     // Campings gestionados directamente por Kampaoh
     const MANAGED_CAMPINGS = ['palmar','las arenas','trafalgar','córdoba','cordoba','pedroso','ría de vigo','ria de vigo'];
@@ -1749,13 +1748,12 @@
                 onclick="setCritical('${r.id}', false)">✅ No es crítica</button>
         ${(() => {
           if (r.severity === 'ok') return '';
-          const kw = getCriticalKeyword(r.comment);
-          const reasons = [];
-          if (kw) reasons.push(`🔑 Keyword: <strong>${esc(kw)}</strong>`);
-          if (isLongNegativeReview(r)) reasons.push('📝 Reseña larga negativa');
-          if (r.severity === 'critical') reasons.push('👤 Marcada manualmente');
-          if (reasons.length === 0) return '';
-          return `<span class="critical-reason-badge">${reasons.join(' · ')}</span>`;
+          const cats = getCriticalCategories(r.comment);
+          const badges = [];
+          cats.forEach(c => badges.push(`<span class="critical-reason-badge">${c}</span>`));
+          if (isLongNegativeReview(r)) badges.push('<span class="critical-reason-badge">📝 Negativa larga</span>');
+          if (r.severity === 'critical' && cats.length === 0 && !isLongNegativeReview(r)) badges.push('<span class="critical-reason-badge">👤 Manual</span>');
+          return badges.join('');
         })()}
       </div>` : ''}
 
