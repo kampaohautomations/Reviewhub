@@ -1573,6 +1573,12 @@
       return CRITICAL_KEYWORDS.find(kw => lower.includes(kw)) || null;
     }
 
+    function isLongNegativeReview(r) {
+      if (r.rating > 2 || !r.comment) return false;
+      const sentences = r.comment.split(/[.!?]+/).filter(s => s.trim().length > 10);
+      return sentences.length > 4;
+    }
+
     function highlightKeyword(text, keyword) {
       if (!keyword) return esc(text);
       const re = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -1584,7 +1590,7 @@
         r.rating <= 2 &&
         r.status !== 'responded' && r.status !== 'ignored' &&
         r.severity !== 'ok' &&
-        (getCriticalKeyword(r.comment) || r.severity === 'critical')
+        (getCriticalKeyword(r.comment) || r.severity === 'critical' || isLongNegativeReview(r))
       );
       const banner  = document.getElementById('bannerCritical');
       const pill    = document.getElementById('alertsCountPill');
