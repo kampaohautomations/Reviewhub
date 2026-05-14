@@ -546,6 +546,16 @@
       letter-spacing: .4px;
     }
 
+    .critical-reason-badge {
+      font-size: 11px;
+      color: #92400e;
+      background: #fef3c7;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      padding: 2px 8px;
+      margin-left: 4px;
+    }
+
     .btn-mark-critical {
       background: #fff5f5;
       color: #dc2626;
@@ -1737,6 +1747,16 @@
                 onclick="setCritical('${r.id}', true)">🚨 Sí, es crítica</button>
         <button class="btn-mark-not-critical${r.severity === 'ok' ? ' active' : ''}"
                 onclick="setCritical('${r.id}', false)">✅ No es crítica</button>
+        ${(() => {
+          if (r.severity === 'ok') return '';
+          const kw = getCriticalKeyword(r.comment);
+          const reasons = [];
+          if (kw) reasons.push(`🔑 Keyword: <strong>${esc(kw)}</strong>`);
+          if (isLongNegativeReview(r)) reasons.push('📝 Reseña larga negativa');
+          if (r.severity === 'critical') reasons.push('👤 Marcada manualmente');
+          if (reasons.length === 0) return '';
+          return `<span class="critical-reason-badge">${reasons.join(' · ')}</span>`;
+        })()}
       </div>` : ''}
 
       ${r.comment ? `<div class="review-text">
