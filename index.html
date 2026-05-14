@@ -1415,6 +1415,33 @@
     let liveReviews = [];
     let sortAscending = false;
     let currentReviewId = null;
+    const translationCache = new Map();
+
+    function extractCleanComment(text) {
+      if (!text) return text;
+      const m = text.match(/^\(Translated by Google\)\s*([\s\S]*?)(?:\s*\(Original\)[\s\S]*)?$/);
+      return m ? m[1].trim() : text;
+    }
+
+    async function translateComment(id) {
+      if (translationCache.has(id)) return;
+      const review = allReviews.find(r => r.id === id);
+      if (!review?.comment) return;
+      const btn = document.getElementById(`translate-btn-${id}`);
+      const span = document.getElementById(`comment-text-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Traduciendo…'; }
+      try {
+        const clean = extractCleanComment(review.comment);
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(clean.slice(0, 800))}&langpair=|es`);
+        const data = await res.json();
+        const translated = data.responseData.translatedText;
+        translationCache.set(id, translated);
+        if (span) span.textContent = translated;
+        if (btn) btn.style.display = 'none';
+      } catch(e) {
+        if (btn) { btn.disabled = false; btn.textContent = '🌐 Traducir'; }
+      }
+    }
 
     // ═══════════════════════════════════════════════════════════
     //  ARRANQUE
@@ -1706,7 +1733,10 @@
                 onclick="setCritical('${r.id}', false)">✅ No es crítica</button>
       </div>` : ''}
 
-      ${r.comment ? `<div class="review-text">${esc(r.comment)}</div>` : ''}
+      ${r.comment ? `<div class="review-text">
+        <span id="comment-text-${r.id}">${esc(translationCache.has(r.id) ? translationCache.get(r.id) : extractCleanComment(r.comment))}</span>
+        ${!translationCache.has(r.id) ? `<button id="translate-btn-${r.id}" onclick="translateComment('${r.id}')" style="margin-left:8px;font-size:11px;background:none;border:1px solid #cbd5e1;border-radius:5px;padding:2px 7px;cursor:pointer;color:#64748b;vertical-align:middle">🌐 Traducir</button>` : ''}
+      </div>` : ''}
 
       ${r.ai_response && r.status === 'auto' ? `
         <div class="ai-response-box">
