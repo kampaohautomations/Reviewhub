@@ -1587,6 +1587,7 @@
     // ═══════════════════════════════════════════════════════════
     let allReviews = [];
     let liveReviews = [];
+    let allHistReviews = null; // full dataset for Histórico (lazy-loaded)
     let sortAscending = false;
     let currentReviewId = null;
     const translationCache = new Map();
@@ -2128,7 +2129,7 @@
       document.getElementById('tab-historico').style.display  = tab === 'historico' ? '' : 'none';
       document.getElementById('tabBtnReviews').classList.toggle('active',   tab === 'reviews');
       document.getElementById('tabBtnHistorico').classList.toggle('active', tab === 'historico');
-      if (tab === 'historico') { initDatePickers(); renderHistoricoGlobal(); }
+      if (tab === 'historico') { initDatePickers(); renderHistoricoGlobal(); ensureHistReviews(); }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -2197,14 +2198,47 @@
       );
     }
 
+    function histSource() {
+      return allHistReviews || liveReviews;
+    }
+
     function filterByCamping(reviews) {
       return histCamping ? reviews.filter(r => r.location_name === histCamping) : reviews;
+    }
+
+    async function ensureHistReviews() {
+      if (allHistReviews !== null) return;
+      // Show loading state in stat cards
+      document.getElementById('histGlobal').innerHTML =
+        '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-muted);font-size:14px">' +
+        '<div class="spinner" style="display:inline-block;margin-right:8px"></div>Cargando historial completo…</div>';
+      try {
+        const batchSize = 1000;
+        let result = [];
+        let from = 0;
+        while (true) {
+          const { data, error } = await db
+            .from('reviews')
+            .select('id, location_name, rating, status, review_date')
+            .order('review_date', { ascending: false, nullsFirst: false })
+            .range(from, from + batchSize - 1);
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          result = result.concat(data);
+          if (data.length < batchSize) break;
+          from += batchSize;
+        }
+        allHistReviews = result;
+        renderHistoricoGlobal();
+      } catch (e) {
+        showToast('Error al cargar historial: ' + e.message, 'error');
+      }
     }
 
     function populateCampingSelect() {
       const sel = document.getElementById('histCampingFilter');
       const current = sel.value;
-      const campings = [...new Set(liveReviews.map(r => r.location_name).filter(Boolean))].sort();
+      const campings = [...new Set(histSource().map(r => r.location_name).filter(Boolean))].sort();
       sel.innerHTML = '<option value="">⛺ Todos los campings</option>' +
         campings.map(c => `<option value="${esc(c)}"${c === current ? ' selected' : ''}>${esc(c)}</option>`).join('');
     }
@@ -2219,8 +2253,9 @@
     }
 
     function renderHistoricoGlobal() {
-      const reviews = filterByCamping(liveReviews);
-      if (!liveReviews.length) return;
+      const src = histSource();
+      const reviews = filterByCamping(src);
+      if (!src.length) return;
       populateCampingSelect();
       renderStatCards(reviews, null);
       if (histCamping) {
