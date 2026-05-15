@@ -289,6 +289,12 @@
       border-left-color: var(--danger);
     }
 
+    .review-card.critical-pending {
+      background: #FFF0F0;
+      border-left-color: var(--danger);
+      border-left-width: 5px;
+    }
+
     .review-card.neutral {
       border-left-color: var(--warning);
     }
@@ -1729,8 +1735,12 @@
         const replied = r.status === 'responded' || r.status === 'approved';
         const replyText = r.final_response || r.ai_response;
         const managed = isManagedCamping(r.location_name);
+        const isPendingCritical = r.rating <= 2 &&
+          (r.status === 'pending' || r.status === 'auto') &&
+          r.severity !== 'ok' &&
+          (getCriticalKeyword(r.comment) || r.severity === 'critical' || isLongNegativeReview(r));
 
-        return `<div class="review-card ${tone}" id="card-${r.id}">
+        return `<div class="review-card ${isPendingCritical ? 'critical-pending' : tone}" id="card-${r.id}">
       <div class="card-top">
         <div>
           <div class="author-name">${esc(r.reviewer_name)}</div>
