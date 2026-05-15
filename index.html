@@ -1199,6 +1199,7 @@
         <select id="filterStatus">
           <option value="">Todos</option>
           <option value="actionable">Por contestar</option>
+          <option value="critical">🚨 Críticas</option>
           <option value="pending">Pendiente</option>
           <option value="auto">IA generada</option>
           <option value="approved">Aprobada</option>
@@ -1561,7 +1562,8 @@
         if (rating === 'negative' && r.rating > 2) return false;
         if (rating && rating !== 'negative' && r.rating !== parseInt(rating)) return false;
         if (status === 'actionable' && !(r.rating <= 2 && (r.status === 'pending' || r.status === 'auto'))) return false;
-        if (status && status !== 'actionable' && r.status !== status) return false;
+        if (status === 'critical' && !(r.severity !== 'ok' && r.rating <= 2 && (getCriticalKeyword(r.comment) || r.severity === 'critical' || isLongNegativeReview(r)))) return false;
+        if (status && status !== 'actionable' && status !== 'critical' && r.status !== status) return false;
         if (search) {
           const haystack = `${r.reviewer_name} ${r.comment || ''} ${r.location_name}`.toLowerCase();
           if (!haystack.includes(search)) return false;
@@ -1619,29 +1621,31 @@
       pill.textContent = critical.length;
       counter.textContent = critical.length;
 
-      try {
-        body.innerHTML = critical.map(r => renderCard(r)).join('');
-      } catch(e) {
-        // fallback: compact view si renderCard falla
-        body.innerHTML = critical.map(r => {
-          const kw = getCriticalKeyword(r.comment);
-          const excerpt = r.comment ? r.comment.slice(0, 160) + (r.comment.length > 160 ? '…' : '') : '';
-          return `<div class="alert-card">
-            <div class="alert-card-info">
-              <div class="alert-card-top">
-                <span class="alert-author">${esc(r.reviewer_name)}</span>
-                <span class="alert-camping">⛺ ${esc(r.location_name)}</span>
-                <span style="font-size:12px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
-                ${statusBadge(r.status)}
-              </div>
-              <div class="alert-excerpt">${highlightKeyword(excerpt, kw)}</div>
+      body.innerHTML = critical.map(r => {
+        const kw = getCriticalKeyword(r.comment);
+        const excerpt = r.comment ? r.comment.slice(0, 160) + (r.comment.length > 160 ? '…' : '') : '';
+        const cats = getCriticalCategories(r.comment);
+        const badges = [
+          ...cats.map(c => `<span class="critical-reason-badge">${c}</span>`),
+          ...(isLongNegativeReview(r) ? ['<span class="critical-reason-badge">📝 Negativa larga</span>'] : []),
+          ...(r.severity === 'critical' && cats.length === 0 && !isLongNegativeReview(r) ? ['<span class="critical-reason-badge">👤 Manual</span>'] : []),
+        ].join('');
+        return `<div class="alert-card">
+          <div class="alert-card-info">
+            <div class="alert-card-top">
+              <span class="alert-author">${esc(r.reviewer_name)}</span>
+              <span class="alert-camping">⛺ ${esc(r.location_name)}</span>
+              <span style="font-size:12px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+              ${statusBadge(r.status)}
+              ${badges}
             </div>
-            <div class="alert-actions">
-              <button class="btn-alert-view" onclick="scrollToReview('${r.id}')">Ver reseña ↓</button>
-            </div>
-          </div>`;
-        }).join('');
-      }
+            <div class="alert-excerpt">${highlightKeyword(excerpt, kw)}</div>
+          </div>
+          <div class="alert-actions">
+            <button class="btn-alert-view" onclick="document.getElementById('filterStatus').value='critical';applyFilters()">Ver críticas →</button>
+          </div>
+        </div>`;
+      }).join('');
     }
 
     function toggleAlerts() {
