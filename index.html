@@ -1311,54 +1311,43 @@
     <!-- ══ TAB: HISTÓRICO ══ -->
     <div id="tab-historico" style="display:none">
 
-      <!-- Global overview (all-time, loaded on tab open) -->
-      <div class="hist-global" id="histGlobal"></div>
-      <div class="hist-table-card" style="margin-bottom:32px">
-        <h3>Todas las reseñas — por camping</h3>
-        <div id="histGlobalTableContainer"></div>
-      </div>
-
-      <!-- Compare section -->
-      <div class="hist-section-label">Comparar periodos</div>
-
+      <!-- Controls at top -->
       <div class="hist-controls">
-        <div class="hist-presets">
-          <button class="btn-preset" onclick="setPreset('week',this)">Esta semana</button>
-          <button class="btn-preset" onclick="setPreset('month',this)">Este mes</button>
-          <button class="btn-preset" onclick="setPreset('quarter',this)">Este trimestre</button>
-        </div>
-        <div class="hist-period-single">
-          <span class="hist-period-single-label">Tu periodo</span>
-          <div class="hist-date-row">
-            <input type="date" id="periodFrom" onchange="scheduleComparison()">
-            <span style="color:var(--text-muted)">→</span>
-            <input type="date" id="periodTo" onchange="scheduleComparison()">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div class="hist-presets" style="margin-bottom:0">
+            <button class="btn-preset" onclick="setPreset('week',this)">Esta semana</button>
+            <button class="btn-preset" onclick="setPreset('month',this)">Este mes</button>
+            <button class="btn-preset" onclick="setPreset('quarter',this)">Este trimestre</button>
           </div>
-          <span class="hist-period-vs-badge">vs</span>
-          <div class="hist-period-prev-box">
-            <span class="hist-period-single-label" style="color:#64748b">Anterior</span>
-            <span class="hist-period-preview" id="prevPeriodLabel">—</span>
+          <div class="hist-period-single" style="margin-top:0">
+            <span class="hist-period-single-label">Tu periodo</span>
+            <div class="hist-date-row">
+              <input type="date" id="periodFrom" onchange="scheduleComparison()">
+              <span style="color:var(--text-muted)">→</span>
+              <input type="date" id="periodTo" onchange="scheduleComparison()">
+            </div>
+            <span class="hist-period-vs-badge">vs</span>
+            <div class="hist-period-prev-box">
+              <span class="hist-period-single-label" style="color:#64748b">Anterior</span>
+              <span class="hist-period-preview" id="prevPeriodLabel">—</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Comparison placeholder -->
-      <div id="histCompPlaceholder" class="hist-placeholder">
-        <div class="ph-icon">📅</div>
-        <p>Elige un periodo para ver la comparativa automática con el anterior.</p>
+      <!-- Stat cards -->
+      <div class="hist-global" id="histGlobal"></div>
+
+      <!-- Main chart (always visible, adapts) -->
+      <div class="hist-chart-card">
+        <h3 id="histChartTitle">Reseñas por camping</h3>
+        <canvas id="histChart"></canvas>
       </div>
 
-      <!-- Comparison results -->
-      <div id="histResults" style="display:none">
+      <!-- Comparison metric cards (only shown when comparison active) -->
+      <div id="histCompareCards" style="display:none">
+        <div class="hist-section-label" style="margin-top:8px">Comparativa de métricas</div>
         <div class="hist-summary" id="histSummary"></div>
-        <div class="hist-chart-card">
-          <h3>Reseñas por camping</h3>
-          <canvas id="histChart"></canvas>
-        </div>
-        <div class="hist-table-card">
-          <h3>Desglose por camping</h3>
-          <div id="histTableContainer"></div>
-        </div>
       </div>
 
     </div><!-- /tab-historico -->
@@ -2050,51 +2039,53 @@
       return d.toISOString().slice(0, 10);
     }
 
-    function renderHistoricoGlobal() {
-      const reviews = liveReviews;
-      if (!reviews.length) {
-        document.getElementById('histGlobal').innerHTML = '<p style="color:var(--text-muted);font-size:14px">Sin datos cargados.</p>';
-        return;
-      }
+    function renderStatCards(reviews, subtitle) {
       const m = calcMetrics(reviews);
       const positives = reviews.filter(r => r.rating >= 4).length;
       const cards = [
-        { icon: '📋', val: m.total,               label: 'Total reseñas' },
+        { icon: '📋', val: m.total,                    label: 'Total reseñas' },
         { icon: '⭐', val: m.avg ? m.avg + ' ★' : '–', label: 'Nota media' },
-        { icon: '👍', val: positives,              label: 'Positivas 4-5★' },
-        { icon: '👎', val: m.negatives,            label: 'Negativas 1-2★' },
-        { icon: '💬', val: m.responseRate + '%',   label: 'Respondidas' },
+        { icon: '👍', val: positives,                  label: 'Positivas 4-5★' },
+        { icon: '👎', val: m.negatives,                label: 'Negativas 1-2★' },
+        { icon: '💬', val: m.responseRate + '%',        label: 'Respondidas' },
       ];
       document.getElementById('histGlobal').innerHTML = cards.map(c => `
         <div class="hist-global-card">
           <div class="hist-global-icon">${c.icon}</div>
           <div class="hist-global-val">${c.val}</div>
           <div class="hist-global-label">${c.label}</div>
+          ${subtitle ? `<div style="font-size:10px;color:var(--text-muted);margin-top:4px">${subtitle}</div>` : ''}
         </div>
       `).join('');
+    }
 
-      const grouped = groupByCamping(reviews);
+    function renderMainChart(datasets, campings, title) {
+      document.getElementById('histChartTitle').textContent = title;
+      if (histChartInstance) histChartInstance.destroy();
+      histChartInstance = new Chart(
+        document.getElementById('histChart').getContext('2d'),
+        {
+          type: 'bar',
+          data: { labels: campings, datasets },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: datasets.length > 1, position: 'top' } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxRotation: 40, font: { size: 11 } } } },
+          },
+        }
+      );
+    }
+
+    function renderHistoricoGlobal() {
+      const reviews = liveReviews;
+      if (!reviews.length) return;
+      renderStatCards(reviews, null);
+      const grouped  = groupByCamping(reviews);
       const campings = Object.keys(grouped).sort();
-      const rows = campings.map(c => {
-        const cm  = calcMetrics(grouped[c]);
-        const pos = grouped[c].filter(r => r.rating >= 4).length;
-        return `<tr>
-          <td class="camping-col">⛺ ${esc(c)}</td>
-          <td>${cm.total}</td>
-          <td>${cm.avg || '–'} ★</td>
-          <td>${pos}</td>
-          <td>${cm.negatives}</td>
-          <td>${cm.responseRate}%</td>
-        </tr>`;
-      }).join('');
-      document.getElementById('histGlobalTableContainer').innerHTML = `
-        <table class="hist-table">
-          <thead><tr>
-            <th>Camping</th><th>Reseñas</th><th>Val. media</th>
-            <th>Positivas</th><th>Negativas</th><th>% Respondidas</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+      renderMainChart([
+        { label: 'Reseñas', data: campings.map(c => grouped[c].length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
+      ], campings, 'Reseñas por camping — todas');
+      document.getElementById('histCompareCards').style.display = 'none';
     }
 
     let _compTimer = null;
@@ -2108,6 +2099,7 @@
       const to   = document.getElementById('periodTo').value;
       if (!from || !to || from > to) {
         document.getElementById('prevPeriodLabel').textContent = '—';
+        renderHistoricoGlobal();
         return;
       }
       const dFrom = new Date(from + 'T12:00:00');
@@ -2128,8 +2120,6 @@
           fetchReviewsInPeriod(bFrom, bTo),
         ]);
         renderHistorico(dataA, dataB, aFrom, aTo, bFrom, bTo);
-        document.getElementById('histCompPlaceholder').style.display = 'none';
-        document.getElementById('histResults').style.display = '';
       } catch (e) {
         showToast('Error al cargar datos: ' + e.message, 'error');
       }
@@ -2203,16 +2193,29 @@
     }
 
     function renderHistorico(dataA, dataB, aFrom, aTo, bFrom, bTo) {
-      const mA = calcMetrics(dataA);
-      const mB = calcMetrics(dataB);
       const labelA = fmtPeriod(aFrom, aTo);
       const labelB = fmtPeriod(bFrom, bTo);
+      const mA = calcMetrics(dataA);
+      const mB = calcMetrics(dataB);
 
+      // Update stat cards to show "Tu periodo"
+      renderStatCards(dataA, labelA);
+
+      // Update chart with two datasets
+      const groupA   = groupByCamping(dataA);
+      const groupB   = groupByCamping(dataB);
+      const campings = [...new Set([...Object.keys(groupA), ...Object.keys(groupB)])].sort();
+      renderMainChart([
+        { label: `Tu periodo · ${labelA}`, data: campings.map(c => (groupA[c] || []).length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
+        { label: `Anterior · ${labelB}`,   data: campings.map(c => (groupB[c] || []).length), backgroundColor: 'rgba(37,99,235,0.75)',  borderColor: '#2563eb', borderWidth: 1, borderRadius: 4 },
+      ], campings, `Reseñas por camping — ${labelA} vs ${labelB}`);
+
+      // Comparison metric cards below chart
       const metrics = [
-        { title: 'Total reseñas',     valA: mA.total,        valB: mB.total,        fmt: v => v,              invert: false },
-        { title: 'Valoración media',  valA: mA.avg,          valB: mB.avg,          fmt: v => v ? v+' ★' : '–', invert: false },
-        { title: 'Tasa de respuesta', valA: mA.responseRate, valB: mB.responseRate, fmt: v => v + '%',        invert: false },
-        { title: 'Reseñas negativas', valA: mA.negatives,    valB: mB.negatives,    fmt: v => v,              invert: true  },
+        { title: 'Total reseñas',     valA: mA.total,        valB: mB.total,        fmt: v => v,                   invert: false },
+        { title: 'Valoración media',  valA: mA.avg,          valB: mB.avg,          fmt: v => v ? v + ' ★' : '–', invert: false },
+        { title: 'Tasa de respuesta', valA: mA.responseRate, valB: mB.responseRate, fmt: v => v + '%',             invert: false },
+        { title: 'Reseñas negativas', valA: mA.negatives,    valB: mB.negatives,    fmt: v => v,                   invert: true  },
       ];
       document.getElementById('histSummary').innerHTML = metrics.map(m => `
         <div class="hist-metric-card">
@@ -2230,49 +2233,7 @@
           </div>
         </div>
       `).join('');
-
-      const groupA = groupByCamping(dataA);
-      const groupB = groupByCamping(dataB);
-      const campings = [...new Set([...Object.keys(groupA), ...Object.keys(groupB)])].sort();
-
-      if (histChartInstance) histChartInstance.destroy();
-      histChartInstance = new Chart(
-        document.getElementById('histChart').getContext('2d'),
-        {
-          type: 'bar',
-          data: {
-            labels: campings,
-            datasets: [
-              { label: `Tu periodo · ${labelA}`, data: campings.map(c => (groupA[c] || []).length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
-              { label: `Anterior · ${labelB}`,   data: campings.map(c => (groupB[c] || []).length), backgroundColor: 'rgba(37,99,235,0.75)',  borderColor: '#2563eb', borderWidth: 1, borderRadius: 4 },
-            ],
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxRotation: 40, font: { size: 11 } } } },
-          },
-        }
-      );
-
-      const rows = campings.map(c => {
-        const rA = groupA[c] || []; const rB = groupB[c] || [];
-        const cA = calcMetrics(rA); const cB = calcMetrics(rB);
-        return `<tr>
-          <td class="camping-col">⛺ ${esc(c)}</td>
-          <td class="val-pair">${cA.total} <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.total} <small class="period-b-color">↓</small></td>
-          <td class="val-pair">${cA.avg || '–'} <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.avg || '–'} <small class="period-b-color">↓</small></td>
-          <td class="val-pair">${cA.negatives} <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.negatives} <small class="period-b-color">↓</small></td>
-          <td class="val-pair">${cA.responseRate}% <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.responseRate}% <small class="period-b-color">↓</small></td>
-        </tr>`;
-      }).join('');
-      document.getElementById('histTableContainer').innerHTML = `
-        <table class="hist-table">
-          <thead><tr>
-            <th>Camping</th><th>Reseñas</th><th>Val. media</th><th>Negativas</th><th>% Respondidas</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
+      document.getElementById('histCompareCards').style.display = '';
     }
 
     // ═══════════════════════════════════════════════════════════
