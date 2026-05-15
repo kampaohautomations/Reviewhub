@@ -1188,6 +1188,25 @@
     .btn-comp-mode:hover:not(.active) { background: var(--border); color: var(--dark); }
 
     /* Flatpickr custom theme */
+    .hist-camping-select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 32px 7px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color .15s;
+      max-width: 220px;
+    }
+    .hist-camping-select:hover { border-color: #94a3b8; }
+    .hist-camping-select:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+    .hist-camping-select.has-value { border-color: var(--brand); background-color: #fffbeb; }
     .hist-fp-input {
       background: var(--bg);
       border: 1px solid var(--border);
@@ -1383,10 +1402,15 @@
       <!-- Controls at top -->
       <div class="hist-controls">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div class="hist-presets" style="margin-bottom:0">
-            <button class="btn-preset" onclick="setPreset('week',this)">Esta semana</button>
-            <button class="btn-preset" onclick="setPreset('month',this)">Este mes</button>
-            <button class="btn-preset" onclick="setPreset('quarter',this)">Este trimestre</button>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="hist-presets" style="margin-bottom:0">
+              <button class="btn-preset" onclick="setPreset('week',this)">Esta semana</button>
+              <button class="btn-preset" onclick="setPreset('month',this)">Este mes</button>
+              <button class="btn-preset" onclick="setPreset('quarter',this)">Este trimestre</button>
+            </div>
+            <select id="histCampingFilter" class="hist-camping-select" onchange="onHistCampingChange()">
+              <option value="">⛺ Todos los campings</option>
+            </select>
           </div>
           <div class="hist-period-single" style="margin-top:0">
             <span class="hist-period-single-label">Tu periodo</span>
@@ -2112,6 +2136,7 @@
     // ═══════════════════════════════════════════════════════════
     let histChartInstance = null;
     let compMode = 'prev';
+    let histCamping = '';
     let fpFrom = null, fpTo = null;
 
     function toDateStr(d) {
@@ -2172,15 +2197,52 @@
       );
     }
 
+    function filterByCamping(reviews) {
+      return histCamping ? reviews.filter(r => r.location_name === histCamping) : reviews;
+    }
+
+    function populateCampingSelect() {
+      const sel = document.getElementById('histCampingFilter');
+      const current = sel.value;
+      const campings = [...new Set(liveReviews.map(r => r.location_name).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="">⛺ Todos los campings</option>' +
+        campings.map(c => `<option value="${esc(c)}"${c === current ? ' selected' : ''}>${esc(c)}</option>`).join('');
+    }
+
+    function onHistCampingChange() {
+      histCamping = document.getElementById('histCampingFilter').value;
+      document.getElementById('histCampingFilter').classList.toggle('has-value', !!histCamping);
+      const from = document.getElementById('periodFrom').value;
+      const to   = document.getElementById('periodTo').value;
+      if (from && to && from <= to) updateComparison();
+      else renderHistoricoGlobal();
+    }
+
     function renderHistoricoGlobal() {
-      const reviews = liveReviews;
-      if (!reviews.length) return;
+      const reviews = filterByCamping(liveReviews);
+      if (!liveReviews.length) return;
+      populateCampingSelect();
       renderStatCards(reviews, null);
-      const grouped  = groupByCamping(reviews);
-      const campings = Object.keys(grouped).sort();
-      renderMainChart([
-        { label: 'Reseñas', data: campings.map(c => grouped[c].length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
-      ], campings, 'Reseñas por camping — todas');
+      if (histCamping) {
+        // Single camping: show bar chart over time (monthly) instead of by camping
+        const byMonth = {};
+        reviews.forEach(r => {
+          if (!r.review_date) return;
+          const key = r.review_date.slice(0, 7); // YYYY-MM
+          byMonth[key] = (byMonth[key] || 0) + 1;
+        });
+        const months  = Object.keys(byMonth).sort();
+        const fmtMonth = m => { const [y,mo] = m.split('-'); return new Date(+y,+mo-1,1).toLocaleDateString('es-ES',{month:'short',year:'2-digit'}); };
+        renderMainChart([
+          { label: reviews[0]?.location_name || histCamping, data: months.map(m => byMonth[m]), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
+        ], months.map(fmtMonth), `${histCamping} — reseñas por mes`);
+      } else {
+        const grouped  = groupByCamping(reviews);
+        const campings = Object.keys(grouped).sort();
+        renderMainChart([
+          { label: 'Reseñas', data: campings.map(c => grouped[c].length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
+        ], campings, 'Reseñas por camping — todas');
+      }
       document.getElementById('histCompareCards').style.display = 'none';
     }
 
@@ -2312,22 +2374,35 @@
     }
 
     function renderHistorico(dataA, dataB, aFrom, aTo, bFrom, bTo) {
+      const fA = filterByCamping(dataA);
+      const fB = filterByCamping(dataB);
       const labelA = fmtPeriod(aFrom, aTo);
       const labelB = fmtPeriod(bFrom, bTo);
-      const mA = calcMetrics(dataA);
-      const mB = calcMetrics(dataB);
+      const mA = calcMetrics(fA);
+      const mB = calcMetrics(fB);
 
-      // Update stat cards to show "Tu periodo"
-      renderStatCards(dataA, labelA);
+      renderStatCards(fA, labelA);
 
-      // Update chart with two datasets
-      const groupA   = groupByCamping(dataA);
-      const groupB   = groupByCamping(dataB);
-      const campings = [...new Set([...Object.keys(groupA), ...Object.keys(groupB)])].sort();
-      renderMainChart([
-        { label: `Tu periodo · ${labelA}`, data: campings.map(c => (groupA[c] || []).length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
-        { label: `Anterior · ${labelB}`,   data: campings.map(c => (groupB[c] || []).length), backgroundColor: 'rgba(37,99,235,0.75)',  borderColor: '#2563eb', borderWidth: 1, borderRadius: 4 },
-      ], campings, `Reseñas por camping — ${labelA} vs ${labelB}`);
+      if (histCamping) {
+        // Single camping: compare monthly totals
+        const byMonthA = {}, byMonthB = {};
+        fA.forEach(r => { if (r.review_date) { const k = r.review_date.slice(0,7); byMonthA[k] = (byMonthA[k]||0)+1; } });
+        fB.forEach(r => { if (r.review_date) { const k = r.review_date.slice(0,7); byMonthB[k] = (byMonthB[k]||0)+1; } });
+        const months = [...new Set([...Object.keys(byMonthA),...Object.keys(byMonthB)])].sort();
+        const fmt = m => { const [y,mo]=m.split('-'); return new Date(+y,+mo-1,1).toLocaleDateString('es-ES',{month:'short',year:'2-digit'}); };
+        renderMainChart([
+          { label: `Tu periodo · ${labelA}`, data: months.map(m=>(byMonthA[m]||0)), backgroundColor:'rgba(217,119,6,0.75)', borderColor:'#d97706', borderWidth:1, borderRadius:4 },
+          { label: `Anterior · ${labelB}`,   data: months.map(m=>(byMonthB[m]||0)), backgroundColor:'rgba(37,99,235,0.75)', borderColor:'#2563eb', borderWidth:1, borderRadius:4 },
+        ], months.map(fmt), `${histCamping} — ${labelA} vs ${labelB}`);
+      } else {
+        const groupA   = groupByCamping(fA);
+        const groupB   = groupByCamping(fB);
+        const campings = [...new Set([...Object.keys(groupA), ...Object.keys(groupB)])].sort();
+        renderMainChart([
+          { label: `Tu periodo · ${labelA}`, data: campings.map(c => (groupA[c]||[]).length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
+          { label: `Anterior · ${labelB}`,   data: campings.map(c => (groupB[c]||[]).length), backgroundColor: 'rgba(37,99,235,0.75)',  borderColor: '#2563eb', borderWidth: 1, borderRadius: 4 },
+        ], campings, `Reseñas por camping — ${labelA} vs ${labelB}`);
+      }
 
       // Comparison metric cards below chart
       const metrics = [
