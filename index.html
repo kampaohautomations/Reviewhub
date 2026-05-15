@@ -1086,11 +1086,81 @@
 
     .hist-placeholder {
       text-align: center;
-      padding: 64px 20px;
+      padding: 48px 20px;
       color: var(--text-muted);
     }
-    .hist-placeholder .ph-icon { font-size: 48px; margin-bottom: 16px; }
+    .hist-placeholder .ph-icon { font-size: 40px; margin-bottom: 12px; }
     .hist-placeholder p { font-size: 15px; }
+
+    /* Global overview cards */
+    .hist-global {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .hist-global-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 16px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .hist-global-icon { font-size: 22px; margin-bottom: 8px; }
+    .hist-global-val  { font-size: 30px; font-weight: 800; color: var(--dark); line-height: 1; margin-bottom: 6px; }
+    .hist-global-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+
+    /* Section divider */
+    .hist-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hist-section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Single-period picker */
+    .hist-period-single {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .hist-period-single-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: #d97706;
+      white-space: nowrap;
+    }
+    .hist-period-vs-badge {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-muted);
+      padding: 0 4px;
+    }
+    .hist-period-prev-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 16px;
+    }
+    .hist-period-preview {
+      font-size: 14px;
+      font-weight: 600;
+      color: #2563eb;
+    }
   </style>
 </head>
 
@@ -1241,42 +1311,44 @@
     <!-- ══ TAB: HISTÓRICO ══ -->
     <div id="tab-historico" style="display:none">
 
-      <!-- Controles -->
+      <!-- Global overview (all-time, loaded on tab open) -->
+      <div class="hist-global" id="histGlobal"></div>
+      <div class="hist-table-card" style="margin-bottom:32px">
+        <h3>Todas las reseñas — por camping</h3>
+        <div id="histGlobalTableContainer"></div>
+      </div>
+
+      <!-- Compare section -->
+      <div class="hist-section-label">Comparar periodos</div>
+
       <div class="hist-controls">
-        <div class="hist-periods">
-          <div class="hist-period-box period-a">
-            <div class="hist-period-label">Periodo A</div>
-            <div class="hist-date-row">
-              <input type="date" id="periodAFrom">
-              <span style="color:var(--text-muted)">→</span>
-              <input type="date" id="periodATo">
-            </div>
-          </div>
-          <div class="hist-vs">vs</div>
-          <div class="hist-period-box period-b">
-            <div class="hist-period-label">Periodo B</div>
-            <div class="hist-date-row">
-              <input type="date" id="periodBFrom">
-              <span style="color:var(--text-muted)">→</span>
-              <input type="date" id="periodBTo">
-            </div>
-          </div>
-        </div>
         <div class="hist-presets">
-          <button class="btn-preset" onclick="setPreset('week',this)">Esta semana vs anterior</button>
-          <button class="btn-preset" onclick="setPreset('month',this)">Este mes vs anterior</button>
-          <button class="btn-preset" onclick="setPreset('quarter',this)">Este trimestre vs anterior</button>
+          <button class="btn-preset" onclick="setPreset('week',this)">Esta semana</button>
+          <button class="btn-preset" onclick="setPreset('month',this)">Este mes</button>
+          <button class="btn-preset" onclick="setPreset('quarter',this)">Este trimestre</button>
         </div>
-        <button class="btn-compare" id="btnCompare" onclick="loadHistorico()">Comparar periodos →</button>
+        <div class="hist-period-single">
+          <span class="hist-period-single-label">Tu periodo</span>
+          <div class="hist-date-row">
+            <input type="date" id="periodFrom" onchange="scheduleComparison()">
+            <span style="color:var(--text-muted)">→</span>
+            <input type="date" id="periodTo" onchange="scheduleComparison()">
+          </div>
+          <span class="hist-period-vs-badge">vs</span>
+          <div class="hist-period-prev-box">
+            <span class="hist-period-single-label" style="color:#64748b">Anterior</span>
+            <span class="hist-period-preview" id="prevPeriodLabel">—</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Placeholder -->
-      <div id="histPlaceholder" class="hist-placeholder">
-        <div class="ph-icon">📊</div>
-        <p>Selecciona dos periodos y pulsa <strong>Comparar periodos</strong> para ver el análisis.</p>
+      <!-- Comparison placeholder -->
+      <div id="histCompPlaceholder" class="hist-placeholder">
+        <div class="ph-icon">📅</div>
+        <p>Elige un periodo para ver la comparativa automática con el anterior.</p>
       </div>
 
-      <!-- Resultados -->
+      <!-- Comparison results -->
       <div id="histResults" style="display:none">
         <div class="hist-summary" id="histSummary"></div>
         <div class="hist-chart-card">
@@ -1966,6 +2038,7 @@
       document.getElementById('tab-historico').style.display  = tab === 'historico' ? '' : 'none';
       document.getElementById('tabBtnReviews').classList.toggle('active',   tab === 'reviews');
       document.getElementById('tabBtnHistorico').classList.toggle('active', tab === 'historico');
+      if (tab === 'historico') renderHistoricoGlobal();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1977,44 +2050,111 @@
       return d.toISOString().slice(0, 10);
     }
 
+    function renderHistoricoGlobal() {
+      const reviews = liveReviews;
+      if (!reviews.length) {
+        document.getElementById('histGlobal').innerHTML = '<p style="color:var(--text-muted);font-size:14px">Sin datos cargados.</p>';
+        return;
+      }
+      const m = calcMetrics(reviews);
+      const positives = reviews.filter(r => r.rating >= 4).length;
+      const cards = [
+        { icon: '📋', val: m.total,               label: 'Total reseñas' },
+        { icon: '⭐', val: m.avg ? m.avg + ' ★' : '–', label: 'Nota media' },
+        { icon: '👍', val: positives,              label: 'Positivas 4-5★' },
+        { icon: '👎', val: m.negatives,            label: 'Negativas 1-2★' },
+        { icon: '💬', val: m.responseRate + '%',   label: 'Respondidas' },
+      ];
+      document.getElementById('histGlobal').innerHTML = cards.map(c => `
+        <div class="hist-global-card">
+          <div class="hist-global-icon">${c.icon}</div>
+          <div class="hist-global-val">${c.val}</div>
+          <div class="hist-global-label">${c.label}</div>
+        </div>
+      `).join('');
+
+      const grouped = groupByCamping(reviews);
+      const campings = Object.keys(grouped).sort();
+      const rows = campings.map(c => {
+        const cm  = calcMetrics(grouped[c]);
+        const pos = grouped[c].filter(r => r.rating >= 4).length;
+        return `<tr>
+          <td class="camping-col">⛺ ${esc(c)}</td>
+          <td>${cm.total}</td>
+          <td>${cm.avg || '–'} ★</td>
+          <td>${pos}</td>
+          <td>${cm.negatives}</td>
+          <td>${cm.responseRate}%</td>
+        </tr>`;
+      }).join('');
+      document.getElementById('histGlobalTableContainer').innerHTML = `
+        <table class="hist-table">
+          <thead><tr>
+            <th>Camping</th><th>Reseñas</th><th>Val. media</th>
+            <th>Positivas</th><th>Negativas</th><th>% Respondidas</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    let _compTimer = null;
+    function scheduleComparison() {
+      clearTimeout(_compTimer);
+      _compTimer = setTimeout(updateComparison, 400);
+    }
+
+    function updateComparison() {
+      const from = document.getElementById('periodFrom').value;
+      const to   = document.getElementById('periodTo').value;
+      if (!from || !to || from > to) {
+        document.getElementById('prevPeriodLabel').textContent = '—';
+        return;
+      }
+      const dFrom = new Date(from + 'T12:00:00');
+      const dTo   = new Date(to   + 'T12:00:00');
+      const days  = Math.round((dTo - dFrom) / 86400000);
+      const bTo   = new Date(dFrom); bTo.setDate(bTo.getDate() - 1);
+      const bFrom = new Date(bTo);   bFrom.setDate(bFrom.getDate() - days);
+      const bFromStr = toDateStr(bFrom);
+      const bToStr   = toDateStr(bTo);
+      document.getElementById('prevPeriodLabel').textContent = fmtPeriod(bFromStr, bToStr);
+      loadHistoricoComparison(from, to, bFromStr, bToStr);
+    }
+
+    async function loadHistoricoComparison(aFrom, aTo, bFrom, bTo) {
+      try {
+        const [dataA, dataB] = await Promise.all([
+          fetchReviewsInPeriod(aFrom, aTo),
+          fetchReviewsInPeriod(bFrom, bTo),
+        ]);
+        renderHistorico(dataA, dataB, aFrom, aTo, bFrom, bTo);
+        document.getElementById('histCompPlaceholder').style.display = 'none';
+        document.getElementById('histResults').style.display = '';
+      } catch (e) {
+        showToast('Error al cargar datos: ' + e.message, 'error');
+      }
+    }
+
     function setPreset(preset, btn) {
       document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('preset-active'));
       btn.classList.add('preset-active');
-
       const now = new Date();
-      let aFrom, aTo, bFrom, bTo;
-
+      let aFrom, aTo;
       if (preset === 'week') {
         const day = now.getDay() || 7;
-        const thisMonday = new Date(now); thisMonday.setDate(now.getDate() - day + 1);
-        const thisSunday = new Date(thisMonday); thisSunday.setDate(thisMonday.getDate() + 6);
-        const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate() - 7);
-        const lastSunday = new Date(thisMonday); lastSunday.setDate(thisMonday.getDate() - 1);
-        aFrom = toDateStr(thisMonday); aTo = toDateStr(thisSunday);
-        bFrom = toDateStr(lastMonday); bTo = toDateStr(lastSunday);
-
+        aFrom = new Date(now); aFrom.setDate(now.getDate() - day + 1);
+        aTo   = new Date(now);
       } else if (preset === 'month') {
-        const s = new Date(now.getFullYear(), now.getMonth(), 1);
-        const e = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const ps = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const pe = new Date(now.getFullYear(), now.getMonth(), 0);
-        aFrom = toDateStr(s);  aTo = toDateStr(e);
-        bFrom = toDateStr(ps); bTo = toDateStr(pe);
-
-      } else if (preset === 'quarter') {
+        aFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+        aTo   = new Date(now);
+      } else {
         const q = Math.floor(now.getMonth() / 3);
-        const s  = new Date(now.getFullYear(), q * 3, 1);
-        const e  = new Date(now.getFullYear(), q * 3 + 3, 0);
-        const ps = new Date(now.getFullYear(), (q - 1) * 3, 1);
-        const pe = new Date(now.getFullYear(), q * 3, 0);
-        aFrom = toDateStr(s);  aTo = toDateStr(e);
-        bFrom = toDateStr(ps); bTo = toDateStr(pe);
+        aFrom = new Date(now.getFullYear(), q * 3, 1);
+        aTo   = new Date(now);
       }
-
-      document.getElementById('periodAFrom').value = aFrom;
-      document.getElementById('periodATo').value   = aTo;
-      document.getElementById('periodBFrom').value = bFrom;
-      document.getElementById('periodBTo').value   = bTo;
+      document.getElementById('periodFrom').value = toDateStr(aFrom);
+      document.getElementById('periodTo').value   = toDateStr(aTo);
+      updateComparison();
     }
 
     async function fetchReviewsInPeriod(from, to) {
@@ -2062,58 +2202,28 @@
       return `${f} – ${t}`;
     }
 
-    async function loadHistorico() {
-      const aFrom = document.getElementById('periodAFrom').value;
-      const aTo   = document.getElementById('periodATo').value;
-      const bFrom = document.getElementById('periodBFrom').value;
-      const bTo   = document.getElementById('periodBTo').value;
-
-      if (!aFrom || !aTo || !bFrom || !bTo) {
-        showToast('Selecciona todas las fechas antes de comparar', 'error');
-        return;
-      }
-
-      const btn = document.getElementById('btnCompare');
-      btn.textContent = 'Cargando…';
-      btn.disabled = true;
-
-      try {
-        const [dataA, dataB] = await Promise.all([
-          fetchReviewsInPeriod(aFrom, aTo),
-          fetchReviewsInPeriod(bFrom, bTo),
-        ]);
-        renderHistorico(dataA, dataB, aFrom, aTo, bFrom, bTo);
-      } catch (e) {
-        showToast('Error al cargar datos: ' + e.message, 'error');
-      } finally {
-        btn.textContent = 'Comparar periodos →';
-        btn.disabled = false;
-      }
-    }
-
     function renderHistorico(dataA, dataB, aFrom, aTo, bFrom, bTo) {
       const mA = calcMetrics(dataA);
       const mB = calcMetrics(dataB);
       const labelA = fmtPeriod(aFrom, aTo);
       const labelB = fmtPeriod(bFrom, bTo);
 
-      // ── Summary cards
       const metrics = [
-        { title: 'Total reseñas',     valA: mA.total,        valB: mB.total,        fmt: v => v,         invert: false },
+        { title: 'Total reseñas',     valA: mA.total,        valB: mB.total,        fmt: v => v,              invert: false },
         { title: 'Valoración media',  valA: mA.avg,          valB: mB.avg,          fmt: v => v ? v+' ★' : '–', invert: false },
-        { title: 'Tasa de respuesta', valA: mA.responseRate, valB: mB.responseRate, fmt: v => v + '%',   invert: false },
-        { title: 'Reseñas negativas', valA: mA.negatives,    valB: mB.negatives,    fmt: v => v,         invert: true  },
+        { title: 'Tasa de respuesta', valA: mA.responseRate, valB: mB.responseRate, fmt: v => v + '%',        invert: false },
+        { title: 'Reseñas negativas', valA: mA.negatives,    valB: mB.negatives,    fmt: v => v,              invert: true  },
       ];
       document.getElementById('histSummary').innerHTML = metrics.map(m => `
         <div class="hist-metric-card">
           <div class="hist-metric-title">${m.title}</div>
           <div class="hist-metric-values">
             <div class="hist-metric-period">
-              <div class="hist-metric-period-label period-a-color">A · ${labelA}</div>
+              <div class="hist-metric-period-label period-a-color">Tu periodo · ${labelA}</div>
               <div class="hist-metric-val">${m.fmt(m.valA)}</div>
             </div>
             <div class="hist-metric-period">
-              <div class="hist-metric-period-label period-b-color">B · ${labelB}</div>
+              <div class="hist-metric-period-label period-b-color">Anterior · ${labelB}</div>
               <div class="hist-metric-val">${m.fmt(m.valB)}</div>
             </div>
             ${deltaHtml(m.valA, m.valB, m.invert)}
@@ -2121,7 +2231,6 @@
         </div>
       `).join('');
 
-      // ── Chart
       const groupA = groupByCamping(dataA);
       const groupB = groupByCamping(dataB);
       const campings = [...new Set([...Object.keys(groupA), ...Object.keys(groupB)])].sort();
@@ -2134,67 +2243,36 @@
           data: {
             labels: campings,
             datasets: [
-              {
-                label: `A · ${labelA}`,
-                data: campings.map(c => (groupA[c] || []).length),
-                backgroundColor: 'rgba(217,119,6,0.75)',
-                borderColor: '#d97706',
-                borderWidth: 1,
-                borderRadius: 4,
-              },
-              {
-                label: `B · ${labelB}`,
-                data: campings.map(c => (groupB[c] || []).length),
-                backgroundColor: 'rgba(37,99,235,0.75)',
-                borderColor: '#2563eb',
-                borderWidth: 1,
-                borderRadius: 4,
-              },
+              { label: `Tu periodo · ${labelA}`, data: campings.map(c => (groupA[c] || []).length), backgroundColor: 'rgba(217,119,6,0.75)', borderColor: '#d97706', borderWidth: 1, borderRadius: 4 },
+              { label: `Anterior · ${labelB}`,   data: campings.map(c => (groupB[c] || []).length), backgroundColor: 'rgba(37,99,235,0.75)',  borderColor: '#2563eb', borderWidth: 1, borderRadius: 4 },
             ],
           },
           options: {
             responsive: true,
             plugins: { legend: { position: 'top' } },
-            scales: {
-              y: { beginAtZero: true, ticks: { stepSize: 1 } },
-              x: { ticks: { maxRotation: 40, font: { size: 11 } } },
-            },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { ticks: { maxRotation: 40, font: { size: 11 } } } },
           },
         }
       );
 
-      // ── Table
       const rows = campings.map(c => {
-        const rA = groupA[c] || [];
-        const rB = groupB[c] || [];
-        const cA = calcMetrics(rA);
-        const cB = calcMetrics(rB);
+        const rA = groupA[c] || []; const rB = groupB[c] || [];
+        const cA = calcMetrics(rA); const cB = calcMetrics(rB);
         return `<tr>
           <td class="camping-col">⛺ ${esc(c)}</td>
-          <td class="val-pair">${cA.total} <small class="period-a-color">A</small> &nbsp;/&nbsp; ${cB.total} <small class="period-b-color">B</small></td>
-          <td class="val-pair">${cA.avg || '–'} <small class="period-a-color">A</small> &nbsp;/&nbsp; ${cB.avg || '–'} <small class="period-b-color">B</small></td>
-          <td class="val-pair">${cA.negatives} <small class="period-a-color">A</small> &nbsp;/&nbsp; ${cB.negatives} <small class="period-b-color">B</small></td>
-          <td class="val-pair">${cA.responseRate}% <small class="period-a-color">A</small> &nbsp;/&nbsp; ${cB.responseRate}% <small class="period-b-color">B</small></td>
+          <td class="val-pair">${cA.total} <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.total} <small class="period-b-color">↓</small></td>
+          <td class="val-pair">${cA.avg || '–'} <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.avg || '–'} <small class="period-b-color">↓</small></td>
+          <td class="val-pair">${cA.negatives} <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.negatives} <small class="period-b-color">↓</small></td>
+          <td class="val-pair">${cA.responseRate}% <small class="period-a-color">↑</small> &nbsp;/&nbsp; ${cB.responseRate}% <small class="period-b-color">↓</small></td>
         </tr>`;
       }).join('');
-
       document.getElementById('histTableContainer').innerHTML = `
         <table class="hist-table">
-          <thead>
-            <tr>
-              <th>Camping</th>
-              <th>Reseñas</th>
-              <th>Val. media</th>
-              <th>Negativas</th>
-              <th>% Respondidas</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th>Camping</th><th>Reseñas</th><th>Val. media</th><th>Negativas</th><th>% Respondidas</th>
+          </tr></thead>
           <tbody>${rows}</tbody>
-        </table>
-      `;
-
-      document.getElementById('histPlaceholder').style.display = 'none';
-      document.getElementById('histResults').style.display     = '';
+        </table>`;
     }
 
     // ═══════════════════════════════════════════════════════════
