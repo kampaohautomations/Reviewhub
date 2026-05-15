@@ -1161,6 +1161,28 @@
       font-weight: 600;
       color: #2563eb;
     }
+    .hist-comp-mode {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .btn-comp-mode {
+      background: none;
+      border: none;
+      border-right: 1px solid var(--border);
+      padding: 6px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .btn-comp-mode:last-child { border-right: none; }
+    .btn-comp-mode.active { background: var(--dark); color: #fff; }
+    .btn-comp-mode:hover:not(.active) { background: var(--border); color: var(--dark); }
   </style>
 </head>
 
@@ -1327,8 +1349,12 @@
               <input type="date" id="periodTo" onchange="scheduleComparison()">
             </div>
             <span class="hist-period-vs-badge">vs</span>
+            <div class="hist-comp-mode">
+              <button class="btn-comp-mode active" onclick="setCompMode('prev',this)">Periodo ant.</button>
+              <button class="btn-comp-mode" onclick="setCompMode('year1',this)">Año ant.</button>
+              <button class="btn-comp-mode" onclick="setCompMode('year2',this)">2 años ant.</button>
+            </div>
             <div class="hist-period-prev-box">
-              <span class="hist-period-single-label" style="color:#64748b">Anterior</span>
               <span class="hist-period-preview" id="prevPeriodLabel">—</span>
             </div>
           </div>
@@ -2034,6 +2060,7 @@
     //  HISTÓRICO
     // ═══════════════════════════════════════════════════════════
     let histChartInstance = null;
+    let compMode = 'prev';
 
     function toDateStr(d) {
       return d.toISOString().slice(0, 10);
@@ -2088,6 +2115,13 @@
       document.getElementById('histCompareCards').style.display = 'none';
     }
 
+    function setCompMode(mode, btn) {
+      compMode = mode;
+      document.querySelectorAll('.btn-comp-mode').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      updateComparison();
+    }
+
     let _compTimer = null;
     function scheduleComparison() {
       clearTimeout(_compTimer);
@@ -2102,13 +2136,24 @@
         renderHistoricoGlobal();
         return;
       }
-      const dFrom = new Date(from + 'T12:00:00');
-      const dTo   = new Date(to   + 'T12:00:00');
-      const days  = Math.round((dTo - dFrom) / 86400000);
-      const bTo   = new Date(dFrom); bTo.setDate(bTo.getDate() - 1);
-      const bFrom = new Date(bTo);   bFrom.setDate(bFrom.getDate() - days);
-      const bFromStr = toDateStr(bFrom);
-      const bToStr   = toDateStr(bTo);
+      let bFromStr, bToStr;
+      if (compMode === 'prev') {
+        const dFrom = new Date(from + 'T12:00:00');
+        const dTo   = new Date(to   + 'T12:00:00');
+        const days  = Math.round((dTo - dFrom) / 86400000);
+        const bTo   = new Date(dFrom); bTo.setDate(bTo.getDate() - 1);
+        const bFrom = new Date(bTo);   bFrom.setDate(bFrom.getDate() - days);
+        bFromStr = toDateStr(bFrom);
+        bToStr   = toDateStr(bTo);
+      } else {
+        const years  = compMode === 'year1' ? 1 : 2;
+        const dFrom  = new Date(from + 'T12:00:00');
+        const dTo    = new Date(to   + 'T12:00:00');
+        dFrom.setFullYear(dFrom.getFullYear() - years);
+        dTo.setFullYear(dTo.getFullYear()     - years);
+        bFromStr = toDateStr(dFrom);
+        bToStr   = toDateStr(dTo);
+      }
       document.getElementById('prevPeriodLabel').textContent = fmtPeriod(bFromStr, bToStr);
       loadHistoricoComparison(from, to, bFromStr, bToStr);
     }
