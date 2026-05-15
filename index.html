@@ -1613,7 +1613,29 @@
       pill.textContent = critical.length;
       counter.textContent = critical.length;
 
-      body.innerHTML = critical.map(r => renderCard(r)).join('');
+      try {
+        body.innerHTML = critical.map(r => renderCard(r)).join('');
+      } catch(e) {
+        // fallback: compact view si renderCard falla
+        body.innerHTML = critical.map(r => {
+          const kw = getCriticalKeyword(r.comment);
+          const excerpt = r.comment ? r.comment.slice(0, 160) + (r.comment.length > 160 ? '…' : '') : '';
+          return `<div class="alert-card">
+            <div class="alert-card-info">
+              <div class="alert-card-top">
+                <span class="alert-author">${esc(r.reviewer_name)}</span>
+                <span class="alert-camping">⛺ ${esc(r.location_name)}</span>
+                <span style="font-size:12px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
+                ${statusBadge(r.status)}
+              </div>
+              <div class="alert-excerpt">${highlightKeyword(excerpt, kw)}</div>
+            </div>
+            <div class="alert-actions">
+              <button class="btn-alert-view" onclick="scrollToReview('${r.id}')">Ver reseña ↓</button>
+            </div>
+          </div>`;
+        }).join('');
+      }
     }
 
     function toggleAlerts() {
