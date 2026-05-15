@@ -813,7 +813,6 @@
       font-size: 12px;
       font-weight: 700;
     }
-    #alertsBody { display: flex; flex-direction: column; gap: 10px; }
     .alert-card {
       background: #fff;
       border: 1.5px solid #fca5a5;
@@ -1219,14 +1218,10 @@
       <span>⚠️ Tienes <strong id="bannerPendingCount">0</strong> reseñas por contestar</span>
       <span class="banner-cta">Ver reseñas pendientes →</span>
     </div>
-    <div id="bannerCritical" class="banner-critical" style="display:none" onclick="toggleAlerts()">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span>🚨 <strong id="bannerCriticalCount">0</strong> reseñas con alertas críticas</span>
-        <span class="alerts-count-pill" id="alertsCountPill">0</span>
-      </div>
-      <span id="alertsChevron" class="banner-chevron open">▼</span>
+    <div id="bannerCritical" class="banner-critical" style="display:none" onclick="filterCritical()">
+      <span>🚨 <strong id="bannerCriticalCount">0</strong> reseñas con alertas críticas</span>
+      <span class="banner-cta">Ver reseñas críticas →</span>
     </div>
-    <div id="alertsBody" style="display:none;margin-bottom:16px"></div>
 
     <!-- Reviews list -->
     <div class="reviews-header">
@@ -1611,49 +1606,12 @@
         (getCriticalKeyword(r.comment) || r.severity === 'critical' || isLongNegativeReview(r))
       );
       const banner  = document.getElementById('bannerCritical');
-      const pill    = document.getElementById('alertsCountPill');
       const counter = document.getElementById('bannerCriticalCount');
-      const body    = document.getElementById('alertsBody');
 
-      if (!critical.length) { banner.style.display = 'none'; body.style.display = 'none'; return; }
+      if (!critical.length) { banner.style.display = 'none'; return; }
 
       banner.style.display = '';
-      pill.textContent = critical.length;
       counter.textContent = critical.length;
-
-      body.innerHTML = critical.map(r => {
-        const kw = getCriticalKeyword(r.comment);
-        const excerpt = r.comment ? r.comment.slice(0, 160) + (r.comment.length > 160 ? '…' : '') : '';
-        const cats = getCriticalCategories(r.comment);
-        const badges = [
-          ...cats.map(c => `<span class="critical-reason-badge">${c}</span>`),
-          ...(isLongNegativeReview(r) ? ['<span class="critical-reason-badge">📝 Negativa larga</span>'] : []),
-          ...(r.severity === 'critical' && cats.length === 0 && !isLongNegativeReview(r) ? ['<span class="critical-reason-badge">👤 Manual</span>'] : []),
-        ].join('');
-        return `<div class="alert-card">
-          <div class="alert-card-info">
-            <div class="alert-card-top">
-              <span class="alert-author">${esc(r.reviewer_name)}</span>
-              <span class="alert-camping">⛺ ${esc(r.location_name)}</span>
-              <span style="font-size:12px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</span>
-              ${statusBadge(r.status)}
-              ${badges}
-            </div>
-            <div class="alert-excerpt">${highlightKeyword(excerpt, kw)}</div>
-          </div>
-          <div class="alert-actions">
-            <button class="btn-alert-view" onclick="document.getElementById('filterStatus').value='critical';applyFilters()">Ver críticas →</button>
-          </div>
-        </div>`;
-      }).join('');
-    }
-
-    function toggleAlerts() {
-      const body    = document.getElementById('alertsBody');
-      const chevron = document.getElementById('alertsChevron');
-      const open    = body.style.display !== 'none';
-      body.style.display = open ? 'none' : '';
-      chevron.classList.toggle('open', !open);
     }
 
     function scrollToReview(id) {
@@ -1666,6 +1624,15 @@
 
     function filterPending() {
       document.getElementById('filterStatus').value = 'actionable';
+      document.getElementById('filterRating').value = '';
+      document.getElementById('filterCamping').value = '';
+      document.getElementById('filterSearch').value = '';
+      applyFilters();
+      window.scrollTo({ top: document.getElementById('reviewsList').offsetTop - 80, behavior: 'smooth' });
+    }
+
+    function filterCritical() {
+      document.getElementById('filterStatus').value = 'critical';
       document.getElementById('filterRating').value = '';
       document.getElementById('filterCamping').value = '';
       document.getElementById('filterSearch').value = '';
