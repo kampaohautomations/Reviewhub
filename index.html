@@ -2273,6 +2273,113 @@
       await loadReviews();
     }
   </script>
+
+  <!-- ── LOGIN OVERLAY ── -->
+  <style>
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: #F7F6F2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+    }
+    #login-overlay.hidden { display: none; }
+    .login-box {
+      background: #fff;
+      border: 1px solid #E8E6DF;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      text-align: center;
+    }
+    .login-logo {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #1A1A1A;
+      margin-bottom: 4px;
+    }
+    .login-sub {
+      font-size: 13px;
+      color: #6B6B6B;
+      margin-bottom: 28px;
+    }
+    .login-input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid #E8E6DF;
+      border-radius: 9px;
+      font-size: 15px;
+      outline: none;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+      transition: border .15s;
+    }
+    .login-input:focus { border-color: #FFD100; }
+    .login-btn {
+      width: 100%;
+      padding: 11px;
+      background: #FFD100;
+      border: none;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .login-btn:hover { background: #E8BC00; }
+    .login-error {
+      color: #dc2626;
+      font-size: 12px;
+      margin-top: 8px;
+      display: none;
+    }
+  </style>
+
+  <div id="login-overlay">
+    <div class="login-box">
+      <div class="login-logo">🏕 ReviewHub</div>
+      <div class="login-sub">Kampaoh · Acceso interno</div>
+      <input id="login-input" class="login-input" type="password"
+             placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()" autofocus />
+      <button class="login-btn" onclick="doLogin()">Entrar</button>
+      <div class="login-error" id="login-error">Contraseña incorrecta</div>
+    </div>
+  </div>
+
+  <script>
+    const LOGIN_HASH = '2826602fbfeef9c0f7daf405bf5a1c22c44be335b128940fe7d2c393c51f7659';
+
+    async function hashStr(str) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    async function doLogin() {
+      const val = document.getElementById('login-input').value;
+      const hash = await hashStr(val);
+      if (hash === LOGIN_HASH) {
+        sessionStorage.setItem('rh_auth', hash);
+        document.getElementById('login-overlay').classList.add('hidden');
+        document.getElementById('login-error').style.display = 'none';
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+        document.getElementById('login-input').value = '';
+        document.getElementById('login-input').focus();
+      }
+    }
+
+    (async () => {
+      const stored = sessionStorage.getItem('rh_auth');
+      if (stored && stored === LOGIN_HASH) {
+        document.getElementById('login-overlay').classList.add('hidden');
+      }
+    })();
+  </script>
 </body>
 
 </html>
